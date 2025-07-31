@@ -75,8 +75,8 @@ python app.py
 ```
 
 3. **Access the interface**:
-- Open http://localhost:5011
-- Default admin: `administrator` (password shown on first run)
+- Open http://localhost:5001
+- Default admin: `administrator` (password shown in console on first run)
 
 ### First Run
 - **Clean Installation**: Database (stemtubes.db) auto-initializes on first launch
@@ -150,12 +150,12 @@ core/downloads/
 ### 🤖 Development Process
 This application was created through an iterative AI development process:
 
-1. **Requirements Analysis**: Human provided high-level goals
+1. **Requirements Analysis**: Benasterisk provided goals and third party opensource components to use
 2. **Architecture Design**: AI designed database schema and system architecture
 3. **Implementation**: AI wrote all code, HTML, CSS, and JavaScript
-4. **Testing & Debugging**: AI identified and fixed bugs through testing
+4. **Testing & Debugging**: Bnasterisk and A.I identified and fixed bugs through testing
 5. **Feature Enhancement**: AI added admin interface, mixer, and advanced features
-6. **Documentation**: AI created comprehensive documentation and legal disclaimers
+6. **Documentation**: AI and Benasterisk created comprehensive documentation and legal disclaimers
 
 ### 🧠 AI Capabilities Demonstrated
 - **Full-stack Development**: Backend APIs, database design, frontend interfaces
@@ -222,6 +222,7 @@ python pack_codebase.py    # Export codebase for analysis
 - Security audits and enhancements
 - Performance optimizations
 - Accessibility improvements
+- Features addons : loop, tempo detection timestreching, Tone/Key dectection and change, chors detection and realtime display.
 
 ---
 
