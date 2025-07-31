@@ -31,9 +31,23 @@ def init_db():
             password_hash TEXT NOT NULL,
             email TEXT,
             is_admin BOOLEAN DEFAULT 0,
+            disclaimer_accepted BOOLEAN DEFAULT 0,
+            disclaimer_accepted_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         ''')
+        
+        # Add disclaimer fields to existing users table if they don't exist
+        try:
+            conn.execute('ALTER TABLE users ADD COLUMN disclaimer_accepted BOOLEAN DEFAULT 0')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            conn.execute('ALTER TABLE users ADD COLUMN disclaimer_accepted_at TIMESTAMP')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+            
         conn.commit()
         
         # Check if admin user exists, create if not
@@ -267,5 +281,32 @@ def delete_user(user_id):
     except Exception as e:
         print(f"Error deleting user: {e}")
         return False, f"Error deleting user: {str(e)}"
+    finally:
+        conn.close()
+
+def get_user_disclaimer_status(user_id):
+    """Check if user has accepted the disclaimer."""
+    conn = get_db_connection()
+    try:
+        user = conn.execute('SELECT disclaimer_accepted FROM users WHERE id = ?', (user_id,)).fetchone()
+        if user:
+            return bool(user['disclaimer_accepted'])
+        return False
+    finally:
+        conn.close()
+
+def accept_disclaimer(user_id):
+    """Record that user has accepted the disclaimer."""
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'UPDATE users SET disclaimer_accepted = 1, disclaimer_accepted_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (user_id,)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error accepting disclaimer: {e}")
+        return False
     finally:
         conn.close()

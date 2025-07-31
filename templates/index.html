@@ -13,13 +13,7 @@
 <body>
     <div class="app-container">
         <header>
-            <div class="header-left">
-                <h1>StemTube Web</h1>
-                <div class="disclaimer-badge" id="disclaimerButton" title="Click to read legal disclaimer">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>AI-Generated • Use Responsibly</span>
-                </div>
-            </div>
+            <h1>StemTube Web</h1>
             <div class="header-buttons">
                 <div class="user-info">
                     <i class="fas fa-user"></i>
@@ -469,53 +463,78 @@
             });
         });
 
-        // Legal Disclaimer Modal
-        const disclaimerButton = document.getElementById('disclaimerButton');
+        // Mandatory Legal Disclaimer System
         const disclaimerModal = document.getElementById('disclaimerModal');
-        const closeDisclaimer = document.getElementById('closeDisclaimer');
+        const acceptDisclaimer = document.getElementById('acceptDisclaimer');
+        
+        // Check if user has accepted disclaimer
+        async function checkDisclaimerStatus() {
+            try {
+                const response = await fetch('/api/user/disclaimer-status');
+                const data = await response.json();
+                
+                if (!data.accepted) {
+                    disclaimerModal.style.display = 'flex';
+                    document.body.classList.add('disclaimer-active');
+                }
+            } catch (error) {
+                console.error('Error checking disclaimer status:', error);
+                // Show disclaimer on error to be safe
+                disclaimerModal.style.display = 'flex';
+                document.body.classList.add('disclaimer-active');
+            }
+        }
 
-        disclaimerButton.addEventListener('click', () => {
-            disclaimerModal.style.display = 'flex';
-        });
-
-        closeDisclaimer.addEventListener('click', () => {
-            disclaimerModal.style.display = 'none';
-        });
-
-        disclaimerModal.addEventListener('click', (e) => {
-            if (e.target === disclaimerModal) {
-                disclaimerModal.style.display = 'none';
+        // Handle disclaimer acceptance
+        acceptDisclaimer.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/user/accept-disclaimer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    disclaimerModal.style.display = 'none';
+                    document.body.classList.remove('disclaimer-active');
+                } else {
+                    console.error('Failed to accept disclaimer');
+                }
+            } catch (error) {
+                console.error('Error accepting disclaimer:', error);
             }
         });
+
+        // Check disclaimer status when page loads
+        checkDisclaimerStatus();
     </script>
 
-    <!-- Legal Disclaimer Modal -->
-    <div id="disclaimerModal" class="modal">
+    <!-- Mandatory Legal Disclaimer Modal -->
+    <div id="disclaimerModal" class="modal mandatory-modal">
         <div class="modal-content disclaimer-modal">
             <div class="modal-header">
-                <h2><i class="fas fa-exclamation-triangle"></i> Legal Disclaimer & AI Development Notice</h2>
-                <span class="close" id="closeDisclaimer">&times;</span>
+                <h2><i class="fas fa-exclamation-triangle"></i> Legal Disclaimer & Terms of Use</h2>
             </div>
             <div class="modal-body disclaimer-content">
                 <div class="disclaimer-section">
-                    <h3>🤖 100% AI-Generated Application</h3>
-                    <p>This entire application was created by <strong>Claude AI</strong> as a proof of concept demonstrating artificial intelligence capabilities in software development. The human contributor served solely as a project manager providing requirements and guidance.</p>
+                    <h3>🤖 AI-Generated Proof of Concept</h3>
+                    <p>This application was created entirely by <strong>Claude AI</strong> as a demonstration of artificial intelligence capabilities in software development. The human contributor served solely as a project manager.</p>
                 </div>
 
                 <div class="disclaimer-section warning">
-                    <h3>⚠️ Legal Responsibility Warning</h3>
-                    <p><strong>YOU ARE SOLELY RESPONSIBLE</strong> for ensuring compliance with all applicable laws when using this software, including:</p>
+                    <h3>⚠️ User Legal Responsibility</h3>
+                    <p><strong>BY USING THIS SOFTWARE, YOU ACKNOWLEDGE AND AGREE THAT:</strong></p>
                     <ul>
-                        <li>YouTube Terms of Service</li>
-                        <li>Copyright laws in your jurisdiction</li>
-                        <li>Content creators' rights and monetization</li>
-                        <li>International copyright treaties</li>
+                        <li><strong>You are solely responsible</strong> for compliance with YouTube Terms of Service</li>
+                        <li><strong>You are solely responsible</strong> for compliance with copyright laws in your jurisdiction</li>
+                        <li><strong>You will respect</strong> content creators' rights and monetization</li>
+                        <li><strong>The developers assume NO liability</strong> for your actions or legal consequences</li>
                     </ul>
-                    <p class="warning-text"><strong>The developer assumes NO responsibility for how this software is used.</strong></p>
                 </div>
 
                 <div class="disclaimer-section">
-                    <h3>✅ Recommended Legal Uses</h3>
+                    <h3>✅ Recommended Legal Uses Only</h3>
                     <ul class="legal-list">
                         <li>Creative Commons licensed content</li>
                         <li>Public domain audio/video</li>
@@ -528,21 +547,26 @@
                 <div class="disclaimer-section">
                     <h3>❌ Prohibited Uses</h3>
                     <ul class="prohibited-list">
-                        <li>Copyrighted music without permission</li>
+                        <li>Copyrighted music without explicit permission</li>
                         <li>Commercial distribution of protected content</li>
-                        <li>Circumventing content monetization</li>
+                        <li>Circumventing content creator monetization</li>
                         <li>Violating platform terms of service</li>
                     </ul>
                 </div>
 
-                <div class="disclaimer-section">
+                <div class="disclaimer-section acceptance-section">
                     <p class="disclaimer-note">
-                        <strong>Remember:</strong> Just because you <em>can</em> download something doesn't mean you legally <em>should</em>.
+                        <strong>By clicking "I Accept and Understand" below, you acknowledge that you have read, understood, and agree to be bound by these terms.</strong>
                     </p>
                     <p class="disclaimer-footer">
-                        For complete legal terms, see the <a href="https://github.com/Benasterisk/StemTube/blob/main/LEGAL_DISCLAIMER.md" target="_blank">full legal disclaimer</a> in the repository.
+                        Full legal details: <a href="https://github.com/benasterisk/StemTube/blob/main/LEGAL_DISCLAIMER.md" target="_blank">Complete Legal Disclaimer</a>
                     </p>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button id="acceptDisclaimer" class="btn btn-primary accept-btn">
+                    <i class="fas fa-check"></i> I Accept and Understand
+                </button>
             </div>
         </div>
     </div>

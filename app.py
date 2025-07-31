@@ -1282,6 +1282,31 @@ def check_ffmpeg():
 def download_ffmpeg_route():
     return jsonify({'error': 'Not implemented'}), 501
 
+@app.route('/api/user/disclaimer-status', methods=['GET'])
+@api_login_required
+def get_disclaimer_status():
+    """Check if current user has accepted the disclaimer."""
+    from core.auth_db import get_user_disclaimer_status
+    
+    user_id = current_user.id
+    accepted = get_user_disclaimer_status(user_id)
+    
+    return jsonify({'accepted': accepted})
+
+@app.route('/api/user/accept-disclaimer', methods=['POST'])
+@api_login_required
+def accept_disclaimer_route():
+    """Record that current user has accepted the disclaimer."""
+    from core.auth_db import accept_disclaimer
+    
+    user_id = current_user.id
+    success = accept_disclaimer(user_id)
+    
+    if success:
+        return jsonify({'success': True, 'message': 'Disclaimer accepted'})
+    else:
+        return jsonify({'success': False, 'message': 'Failed to record disclaimer acceptance'}), 500
+
 @app.route('/api/open-folder', methods=['POST'])
 @api_login_required
 def open_folder_route():

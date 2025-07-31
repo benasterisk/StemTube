@@ -112,40 +112,6 @@ header h1 {
     font-weight: 600;
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.disclaimer-badge {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background-color: var(--warning-color);
-    color: #fff;
-    border-radius: var(--border-radius);
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    animation: pulse 2s infinite;
-}
-
-.disclaimer-badge:hover {
-    background-color: #e65100;
-    transform: translateY(-1px);
-}
-
-.disclaimer-badge i {
-    font-size: 0.9rem;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
 
 .header-buttons {
     display: flex;
@@ -575,14 +541,21 @@ header h1 {
     justify-content: flex-end;
 }
 
-/* Disclaimer Modal Styles */
+/* Mandatory Disclaimer Modal */
+.mandatory-modal {
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
 .disclaimer-modal {
     max-width: 700px;
     width: 95%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .disclaimer-content {
-    max-height: 70vh;
+    max-height: 60vh;
     overflow-y: auto;
 }
 
@@ -611,10 +584,9 @@ header h1 {
     color: var(--warning-color);
 }
 
-.warning-text {
-    font-weight: bold;
-    color: var(--error-color);
-    margin-top: var(--spacing-sm);
+.acceptance-section {
+    background-color: rgba(29, 185, 84, 0.1);
+    border: 1px solid var(--accent-color);
 }
 
 .legal-list li {
@@ -628,7 +600,7 @@ header h1 {
 }
 
 .disclaimer-note {
-    font-style: italic;
+    font-weight: 600;
     padding: var(--spacing-sm);
     background-color: var(--bg-secondary);
     border-radius: var(--border-radius);
@@ -651,15 +623,35 @@ header h1 {
     text-decoration: underline;
 }
 
-.close {
-    font-size: 1.5rem;
+.accept-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    color: var(--text-secondary);
-    transition: color var(--transition-fast);
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
 }
 
-.close:hover {
-    color: var(--error-color);
+.accept-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+/* Block interface until disclaimer accepted */
+body.disclaimer-active .app-container > *:not(#disclaimerModal) {
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+body.disclaimer-active #disclaimerModal {
+    pointer-events: all;
+    opacity: 1;
 }
 
 /* Settings Modal */
