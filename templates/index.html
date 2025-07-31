@@ -469,42 +469,68 @@
         
         // Check if user has accepted disclaimer
         async function checkDisclaimerStatus() {
+            console.log('Checking disclaimer status...');
+            
+            if (!disclaimerModal) {
+                console.error('Disclaimer modal not found!');
+                return;
+            }
+            
             try {
                 const response = await fetch('/api/user/disclaimer-status');
+                console.log('API response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
                 const data = await response.json();
+                console.log('Disclaimer status:', data);
                 
                 if (!data.accepted) {
+                    console.log('Showing disclaimer modal');
                     disclaimerModal.style.display = 'flex';
                     document.body.classList.add('disclaimer-active');
+                } else {
+                    console.log('Disclaimer already accepted');
                 }
             } catch (error) {
                 console.error('Error checking disclaimer status:', error);
                 // Show disclaimer on error to be safe
+                console.log('Showing disclaimer modal due to error');
                 disclaimerModal.style.display = 'flex';
                 document.body.classList.add('disclaimer-active');
             }
         }
 
         // Handle disclaimer acceptance
-        acceptDisclaimer.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/user/accept-disclaimer', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+        if (acceptDisclaimer) {
+            acceptDisclaimer.addEventListener('click', async () => {
+                console.log('Accept button clicked');
+                try {
+                    const response = await fetch('/api/user/accept-disclaimer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    console.log('Accept API response status:', response.status);
+                    
+                    if (response.ok) {
+                        console.log('Disclaimer accepted, hiding modal');
+                        disclaimerModal.style.display = 'none';
+                        document.body.classList.remove('disclaimer-active');
+                    } else {
+                        console.error('Failed to accept disclaimer, status:', response.status);
                     }
-                });
-                
-                if (response.ok) {
-                    disclaimerModal.style.display = 'none';
-                    document.body.classList.remove('disclaimer-active');
-                } else {
-                    console.error('Failed to accept disclaimer');
+                } catch (error) {
+                    console.error('Error accepting disclaimer:', error);
                 }
-            } catch (error) {
-                console.error('Error accepting disclaimer:', error);
-            }
-        });
+            });
+        } else {
+            console.error('Accept disclaimer button not found!');
+        }
 
         // Check disclaimer status when page loads
         checkDisclaimerStatus();
