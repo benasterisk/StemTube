@@ -79,9 +79,11 @@ python app.py
 - Default admin: `administrator` (password shown on first run)
 
 ### First Run
-- Database auto-initializes
-- FFmpeg downloads automatically if needed
-- GPU detection runs automatically
+- **Clean Installation**: Database (stemtubes.db) auto-initializes on first launch
+- **No Existing Data**: Repository contains no user accounts, downloads, or extractions
+- **Default Admin**: Creates administrator account with generated password (shown on startup)
+- **FFmpeg Setup**: Downloads automatically if needed
+- **GPU Detection**: Runs automatically for optimal performance
 
 ---
 
