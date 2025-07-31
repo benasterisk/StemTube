@@ -13,7 +13,13 @@
 <body>
     <div class="app-container">
         <header>
-            <h1>StemTube Web</h1>
+            <div class="header-left">
+                <h1>StemTube Web</h1>
+                <div class="disclaimer-badge" id="disclaimerButton" title="Click to read legal disclaimer">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>AI-Generated • Use Responsibly</span>
+                </div>
+            </div>
             <div class="header-buttons">
                 <div class="user-info">
                     <i class="fas fa-user"></i>
@@ -462,6 +468,83 @@
                 }
             });
         });
+
+        // Legal Disclaimer Modal
+        const disclaimerButton = document.getElementById('disclaimerButton');
+        const disclaimerModal = document.getElementById('disclaimerModal');
+        const closeDisclaimer = document.getElementById('closeDisclaimer');
+
+        disclaimerButton.addEventListener('click', () => {
+            disclaimerModal.style.display = 'flex';
+        });
+
+        closeDisclaimer.addEventListener('click', () => {
+            disclaimerModal.style.display = 'none';
+        });
+
+        disclaimerModal.addEventListener('click', (e) => {
+            if (e.target === disclaimerModal) {
+                disclaimerModal.style.display = 'none';
+            }
+        });
     </script>
+
+    <!-- Legal Disclaimer Modal -->
+    <div id="disclaimerModal" class="modal">
+        <div class="modal-content disclaimer-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Legal Disclaimer & AI Development Notice</h2>
+                <span class="close" id="closeDisclaimer">&times;</span>
+            </div>
+            <div class="modal-body disclaimer-content">
+                <div class="disclaimer-section">
+                    <h3>🤖 100% AI-Generated Application</h3>
+                    <p>This entire application was created by <strong>Claude AI</strong> as a proof of concept demonstrating artificial intelligence capabilities in software development. The human contributor served solely as a project manager providing requirements and guidance.</p>
+                </div>
+
+                <div class="disclaimer-section warning">
+                    <h3>⚠️ Legal Responsibility Warning</h3>
+                    <p><strong>YOU ARE SOLELY RESPONSIBLE</strong> for ensuring compliance with all applicable laws when using this software, including:</p>
+                    <ul>
+                        <li>YouTube Terms of Service</li>
+                        <li>Copyright laws in your jurisdiction</li>
+                        <li>Content creators' rights and monetization</li>
+                        <li>International copyright treaties</li>
+                    </ul>
+                    <p class="warning-text"><strong>The developer assumes NO responsibility for how this software is used.</strong></p>
+                </div>
+
+                <div class="disclaimer-section">
+                    <h3>✅ Recommended Legal Uses</h3>
+                    <ul class="legal-list">
+                        <li>Creative Commons licensed content</li>
+                        <li>Public domain audio/video</li>
+                        <li>Your own original content</li>
+                        <li>Open source audio libraries</li>
+                        <li>Educational research purposes</li>
+                    </ul>
+                </div>
+
+                <div class="disclaimer-section">
+                    <h3>❌ Prohibited Uses</h3>
+                    <ul class="prohibited-list">
+                        <li>Copyrighted music without permission</li>
+                        <li>Commercial distribution of protected content</li>
+                        <li>Circumventing content monetization</li>
+                        <li>Violating platform terms of service</li>
+                    </ul>
+                </div>
+
+                <div class="disclaimer-section">
+                    <p class="disclaimer-note">
+                        <strong>Remember:</strong> Just because you <em>can</em> download something doesn't mean you legally <em>should</em>.
+                    </p>
+                    <p class="disclaimer-footer">
+                        For complete legal terms, see the <a href="https://github.com/Benasterisk/StemTube/blob/main/LEGAL_DISCLAIMER.md" target="_blank">full legal disclaimer</a> in the repository.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -112,6 +112,41 @@ header h1 {
     font-weight: 600;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.disclaimer-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: var(--warning-color);
+    color: #fff;
+    border-radius: var(--border-radius);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    animation: pulse 2s infinite;
+}
+
+.disclaimer-badge:hover {
+    background-color: #e65100;
+    transform: translateY(-1px);
+}
+
+.disclaimer-badge i {
+    font-size: 0.9rem;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
 .header-buttons {
     display: flex;
     gap: var(--spacing-sm);
@@ -538,6 +573,93 @@ header h1 {
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
+}
+
+/* Disclaimer Modal Styles */
+.disclaimer-modal {
+    max-width: 700px;
+    width: 95%;
+}
+
+.disclaimer-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.disclaimer-section {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-tertiary);
+}
+
+.disclaimer-section h3 {
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.disclaimer-section.warning {
+    background-color: rgba(251, 140, 0, 0.1);
+    border: 1px solid var(--warning-color);
+}
+
+.disclaimer-section.warning h3 {
+    color: var(--warning-color);
+}
+
+.warning-text {
+    font-weight: bold;
+    color: var(--error-color);
+    margin-top: var(--spacing-sm);
+}
+
+.legal-list li {
+    color: var(--success-color);
+    margin: var(--spacing-xs) 0;
+}
+
+.prohibited-list li {
+    color: var(--error-color);
+    margin: var(--spacing-xs) 0;
+}
+
+.disclaimer-note {
+    font-style: italic;
+    padding: var(--spacing-sm);
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    margin-top: var(--spacing-md);
+}
+
+.disclaimer-footer {
+    text-align: center;
+    margin-top: var(--spacing-md);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.disclaimer-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.disclaimer-footer a:hover {
+    text-decoration: underline;
+}
+
+.close {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color var(--transition-fast);
+}
+
+.close:hover {
+    color: var(--error-color);
 }
 
 /* Settings Modal */
