@@ -464,15 +464,24 @@
         });
 
         // Mandatory Legal Disclaimer System
-        const disclaimerModal = document.getElementById('disclaimerModal');
-        const acceptDisclaimer = document.getElementById('acceptDisclaimer');
+        let disclaimerModal = null;
+        let acceptDisclaimer = null;
         
         // Check if user has accepted disclaimer
         async function checkDisclaimerStatus() {
             console.log('Checking disclaimer status...');
             
+            // Get elements fresh each time
+            disclaimerModal = document.getElementById('disclaimerModal');
+            acceptDisclaimer = document.getElementById('acceptDisclaimer');
+            
             if (!disclaimerModal) {
                 console.error('Disclaimer modal not found!');
+                return;
+            }
+            
+            if (!acceptDisclaimer) {
+                console.error('Accept disclaimer button not found!');
                 return;
             }
             
@@ -504,36 +513,62 @@
         }
 
         // Handle disclaimer acceptance
-        if (acceptDisclaimer) {
-            acceptDisclaimer.addEventListener('click', async () => {
-                console.log('Accept button clicked');
-                try {
-                    const response = await fetch('/api/user/accept-disclaimer', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
+        function setupDisclaimerHandlers() {
+            if (acceptDisclaimer) {
+                acceptDisclaimer.addEventListener('click', async () => {
+                    console.log('Accept button clicked');
+                    try {
+                        const response = await fetch('/api/user/accept-disclaimer', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
+                        
+                        console.log('Accept API response status:', response.status);
+                        
+                        if (response.ok) {
+                            console.log('Disclaimer accepted, hiding modal');
+                            disclaimerModal.style.display = 'none';
+                            document.body.classList.remove('disclaimer-active');
+                        } else {
+                            console.error('Failed to accept disclaimer, status:', response.status);
                         }
-                    });
-                    
-                    console.log('Accept API response status:', response.status);
-                    
-                    if (response.ok) {
-                        console.log('Disclaimer accepted, hiding modal');
-                        disclaimerModal.style.display = 'none';
-                        document.body.classList.remove('disclaimer-active');
-                    } else {
-                        console.error('Failed to accept disclaimer, status:', response.status);
+                    } catch (error) {
+                        console.error('Error accepting disclaimer:', error);
                     }
-                } catch (error) {
-                    console.error('Error accepting disclaimer:', error);
-                }
-            });
-        } else {
-            console.error('Accept disclaimer button not found!');
+                });
+            } else {
+                console.error('Accept disclaimer button not found!');
+            }
         }
 
-        // Check disclaimer status when page loads
-        checkDisclaimerStatus();
+        // Initialize disclaimer system
+        function initDisclaimerSystem() {
+            console.log('Initializing disclaimer system...');
+            
+            disclaimerModal = document.getElementById('disclaimerModal');
+            acceptDisclaimer = document.getElementById('acceptDisclaimer');
+            
+            console.log('Modal found:', !!disclaimerModal);
+            console.log('Button found:', !!acceptDisclaimer);
+            
+            if (disclaimerModal && acceptDisclaimer) {
+                setupDisclaimerHandlers();
+                checkDisclaimerStatus();
+            } else {
+                console.error('Disclaimer elements not found, trying again in 1000ms...');
+                setTimeout(initDisclaimerSystem, 1000);
+            }
+        }
+
+        // Check disclaimer status when page loads - ensure DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDisclaimerSystem);
+        } else {
+            // DOM already loaded
+            initDisclaimerSystem();
+        }
     </script>
 
     <!-- Mandatory Legal Disclaimer Modal -->
