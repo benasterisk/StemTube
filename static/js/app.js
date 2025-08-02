@@ -183,18 +183,7 @@ function initializeEventListeners() {
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', () => {
             const tabId = button.dataset.tab;
-            
-            // Update active tab button
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            button.classList.add('active');
-            
-            // Update active tab content
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.getElementById(`${tabId}Tab`).classList.add('active');
+            switchToTab(tabId);
         });
     });
     
@@ -619,7 +608,7 @@ function startDownload() {
         }
         
         // Switch to downloads tab
-        document.querySelector('.tab-button[data-tab="downloads"]').click();
+        switchToTab('downloads');
     })
     .catch(error => {
         console.error('Error adding download:', error);
@@ -808,7 +797,7 @@ function startExtraction() {
         }
         
         // Switch to extractions tab
-        document.querySelector('.tab-button[data-tab="extractions"]').click();
+        switchToTab('extractions');
     })
     .catch(error => {
         console.error('Error adding extraction:', error);
@@ -856,6 +845,9 @@ function loadDownloads() {
                 const downloadElement = createDownloadElement(item);
                 downloadsContainer.appendChild(downloadElement);
             });
+            
+            // Update left panel if we're on extractions tab
+            updateDownloadsListForExtraction(data);
         })
         .catch(error => {
             console.error('Error loading downloads:', error);
@@ -899,6 +891,9 @@ function loadExtractions() {
                 const extractionElement = createExtractionElement(item);
                 extractionsContainer.appendChild(extractionElement);
             });
+            
+            // Update left panel if we're on mixer tab
+            updateExtractionsListForMixer(data);
         })
         .catch(error => {
             console.error('Error loading extractions:', error);
@@ -1119,26 +1114,10 @@ function createExtractionElement(item) {
                 const extractionId = openMixerButton.dataset.extractionId;
                 
                 // Switch to the Mixer tab
-                document.querySelectorAll('.tab-button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                document.querySelectorAll('.tab-content').forEach(tab => {
-                    tab.classList.remove('active');
-                });
+                switchToTab('mixer');
                 
-                // Activate the mixer tab
-                const mixerTabButton = document.querySelector('.tab-button[data-tab="mixer"]');
-                const mixerTab = document.getElementById('mixerTab');
-                mixerTabButton.classList.add('active');
-                mixerTab.classList.add('active');
-                
-                // Show loading indicator and update iframe source
-                const loadingDiv = document.getElementById('loading');
-                const mixerFrame = document.getElementById('mixerFrame');
-                
-                loadingDiv.style.display = 'block';
-                mixerFrame.style.display = 'none';
-                mixerFrame.src = `/mixer?extraction_id=${encodeURIComponent(extractionId)}`;
+                // Load extraction in mixer with state persistence
+                loadExtractionInMixer(extractionId);
             });
         }
         
@@ -1494,26 +1473,10 @@ function updateExtractionComplete(data) {
             const extractionId = openMixerButton.dataset.extractionId;
                 
             // Switch to the Mixer tab
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            switchToTab('mixer');
             
-            // Activate the mixer tab
-            const mixerTabButton = document.querySelector('.tab-button[data-tab="mixer"]');
-            const mixerTab = document.getElementById('mixerTab');
-            mixerTabButton.classList.add('active');
-            mixerTab.classList.add('active');
-            
-            // Show loading indicator and update iframe source
-            const loadingDiv = document.getElementById('loading');
-            const mixerFrame = document.getElementById('mixerFrame');
-            
-            loadingDiv.style.display = 'block';
-            mixerFrame.style.display = 'none';
-            mixerFrame.src = `/mixer?extraction_id=${encodeURIComponent(extractionId)}`;
+            // Load extraction in mixer with state persistence
+            loadExtractionInMixer(extractionId);
         });
     }
     

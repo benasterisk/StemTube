@@ -29,32 +29,57 @@
         </header>
         
         <main id="split-main">
-            <!-- Left Column: YouTube Search -->
+            <!-- Left Column: Dynamic content based on active tab -->
             <div class="column search-column" id="left-panel">
-                <div class="search-container">
-                    <div class="search-mode-container">
-                        <label for="searchMode">Mode:</label>
-                        <div class="segmented-control" id="searchMode">
-                            <button class="segment active" data-mode="search">🔍 Search</button>
-                            <button class="segment" data-mode="url">🔗 URL</button>
+                <!-- YouTube Search (for Downloads, Search tabs) -->
+                <div class="left-panel-content" id="searchContent">
+                    <div class="search-container">
+                        <div class="search-mode-container">
+                            <label for="searchMode">Mode:</label>
+                            <div class="segmented-control" id="searchMode">
+                                <button class="segment active" data-mode="search">🔍 Search</button>
+                                <button class="segment" data-mode="url">🔗 URL</button>
+                            </div>
+                        </div>
+                        
+                        <div class="search-input-container">
+                            <input type="text" id="searchInput" placeholder="Search YouTube...">
+                            <select id="resultsCount">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                            </select>
+                            <button id="searchButton"><i class="fas fa-search"></i></button>
                         </div>
                     </div>
                     
-                    <div class="search-input-container">
-                        <input type="text" id="searchInput" placeholder="Search YouTube...">
-                        <select id="resultsCount">
-                            <option value="5">5</option>
-                            <option value="10" selected>10</option>
-                            <option value="20">20</option>
-                            <option value="30">30</option>
-                            <option value="50">50</option>
-                        </select>
-                        <button id="searchButton"><i class="fas fa-search"></i></button>
+                    <div class="search-results" id="searchResults">
+                        <!-- Search results will be dynamically added here -->
                     </div>
                 </div>
                 
-                <div class="search-results" id="searchResults">
-                    <!-- Search results will be dynamically added here -->
+                <!-- Downloads List (for Extractions tab) -->
+                <div class="left-panel-content" id="downloadsContent" style="display: none;">
+                    <div class="panel-header">
+                        <h3>Available Downloads</h3>
+                        <p class="panel-subtitle">Click on a download to start extraction</p>
+                    </div>
+                    <div class="downloads-list-for-extraction" id="downloadsListForExtraction">
+                        <!-- Downloads available for extraction will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <!-- Extractions List (for Mixer tab) -->
+                <div class="left-panel-content" id="extractionsContent" style="display: none;">
+                    <div class="panel-header">
+                        <h3>Your Extractions</h3>
+                        <p class="panel-subtitle">Click on an extraction to load in mixer</p>
+                    </div>
+                    <div class="extractions-list-for-mixer" id="extractionsListForMixer">
+                        <!-- Extractions available for mixing will be dynamically added here -->
+                    </div>
                 </div>
             </div>
             
@@ -64,7 +89,7 @@
                     {% if current_user.is_admin %}
                     <button class="tab-button" data-tab="admin">Users Administration</button>
                     {% endif %}
-                    <button class="tab-button active" data-tab="downloads">Downloads</button>
+                    <button class="tab-button" data-tab="downloads">Downloads</button>
                     <button class="tab-button" data-tab="extractions">Extractions</button>
                     <button class="tab-button" data-tab="mixer">Mixer</button>
                 </div>
@@ -79,7 +104,7 @@
                 </div>
                 {% endif %}
                 
-                <div class="tab-content active" id="downloadsTab">
+                <div class="tab-content" id="downloadsTab">
                     <h2>Downloads</h2>
                     <div class="downloads-container" id="downloadsContainer">
                         <!-- Downloads will be dynamically added here -->
@@ -321,6 +346,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app-extensions.js') }}"></script>
     
     <!-- Script for handling mixer iframe loading -->
     <script>

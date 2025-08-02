@@ -376,6 +376,90 @@ header h1 {
     overflow-y: auto;
 }
 
+/* Left Panel Content Management */
+.left-panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-header {
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h3 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.panel-subtitle {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.downloads-list-for-extraction, .extractions-list-for-mixer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Compact list items for side panels */
+.download-item-compact, .extraction-item-compact {
+    padding: var(--spacing-sm);
+    background-color: var(--bg-secondary);
+    border-radius: calc(var(--border-radius) / 2);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.download-item-compact:hover, .extraction-item-compact:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.download-item-compact.selected, .extraction-item-compact.selected {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.compact-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.compact-item-status {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.download-item-compact.selected .compact-item-status,
+.extraction-item-compact.selected .compact-item-status {
+    opacity: 0.9;
+}
+
+/* Empty state for left panel lists */
+.downloads-list-for-extraction .empty-state,
+.extractions-list-for-mixer .empty-state {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
 /* Download and Extraction Items */
 .download-item, .extraction-item {
     margin-bottom: var(--spacing-md);

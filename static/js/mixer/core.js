@@ -139,6 +139,9 @@ class StemMixer {
                 this.waveform.updateAllWaveforms();
                 this.setupScrollSynchronization();
                 this.log('Rendu des formes d\'onde effectué après initialisation complète');
+                
+                // Initialiser la persistance après que tout soit chargé
+                this.initPersistence();
             }, 300);
             
             this.isInitialized = true;
@@ -489,6 +492,30 @@ class StemMixer {
     updateTimeDisplay() {
         if (this.elements.timeDisplay) {
             this.elements.timeDisplay.textContent = this.formatTime(this.currentTime);
+        }
+    }
+    
+    /**
+     * Initialiser la persistance de l'état
+     */
+    initPersistence() {
+        try {
+            // Créer l'instance de persistance
+            this.persistence = new MixerPersistence(this);
+            
+            // Restaurer l'état sauvegardé avec un délai pour s'assurer que tout est chargé
+            setTimeout(() => {
+                const restored = this.persistence.restoreState();
+                if (restored) {
+                    this.log('État du mixer restauré depuis localStorage');
+                } else {
+                    this.log('Aucun état précédent trouvé ou différente extraction');
+                }
+            }, 500);
+            
+            this.log('Persistance du mixer initialisée');
+        } catch (error) {
+            this.log(`Erreur lors de l'initialisation de la persistance: ${error.message}`);
         }
     }
 }
