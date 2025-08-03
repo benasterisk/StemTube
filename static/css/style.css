@@ -566,6 +566,37 @@ header h1 {
     background-color: #ff7070;
 }
 
+/* New extraction status buttons */
+.item-button.extracted {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.item-button.extracted:hover {
+    background-color: #45a049;
+}
+
+.item-button.grant-access {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.item-button.grant-access:hover {
+    background-color: #e69900;
+}
+
+.item-button.loading {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    cursor: wait;
+}
+
+/* Compact item status styles */
+.compact-item-status.extracted-no-access {
+    color: var(--warning-color);
+    font-weight: 500;
+}
+
 /* Modals */
 .modal {
     display: none;

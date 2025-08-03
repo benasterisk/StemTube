@@ -152,6 +152,13 @@ class AudioEngine {
         stem.source = this.audioContext.createBufferSource();
         stem.source.buffer = stem.buffer;
         
+        // Appliquer les effets pitch/tempo si disponibles
+        if (this.mixer.pitchTempoControl) {
+            const pitchRatio = Math.pow(2, this.mixer.pitchTempoControl.currentPitch / 12);
+            const tempoRatio = this.mixer.pitchTempoControl.currentTempo / 100;
+            stem.source.playbackRate.value = pitchRatio * tempoRatio;
+        }
+        
         // Créer le nœud de gain
         stem.gainNode = this.audioContext.createGain();
         stem.gainNode.gain.value = stem.muted ? 0 : stem.volume;
@@ -169,6 +176,11 @@ class AudioEngine {
         stem.source.onended = () => {
             this.handleStemEnded(name);
         };
+        
+        // Informer le contrôleur pitch/tempo du nouveau stem
+        if (this.mixer.pitchTempoControl) {
+            this.mixer.pitchTempoControl.initializeStem(name, stem);
+        }
         
         return stem.source;
     }

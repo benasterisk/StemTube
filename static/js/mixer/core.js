@@ -85,6 +85,9 @@ class StemMixer {
         // Initialiser le gestionnaire de contrôles de piste
         this.trackControls = new TrackControls(this);
         
+        // Initialiser le contrôle pitch/tempo
+        this.pitchTempoControl = new PitchTempoControl(this);
+        
         // Logger l'initialisation des modules
         console.log('[StemMixer] Modules initialisés');
     }

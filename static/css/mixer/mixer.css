@@ -161,6 +161,79 @@
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Pitch and Tempo Controls */
+.pitch-tempo-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin: 0 1rem;
+}
+
+.pitch-tempo-controls .control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pitch-tempo-controls .control-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 40px;
+}
+
+.pitch-control, .tempo-control {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+    padding: 0.2rem;
+    gap: 0.2rem;
+}
+
+.control-btn {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: none;
+    border-radius: calc(var(--border-radius) - 2px);
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn.reset {
+    color: var(--accent-color);
+}
+
+.control-btn.reset:hover {
+    background-color: rgba(29, 185, 84, 0.2);
+}
+
+.control-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 32px;
+    text-align: center;
+    padding: 0 0.2rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: calc(var(--border-radius) - 2px);
+}
+
 /* Timeline */
 .timeline-container {
     display: flex;

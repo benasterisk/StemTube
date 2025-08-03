@@ -903,6 +903,106 @@ function loadExtractions() {
         });
 }
 
+// Check extraction status for a video
+async function checkExtractionStatus(videoId) {
+    try {
+        const response = await fetch(`/api/downloads/${encodeURIComponent(videoId)}/extraction-status`, {
+            headers: {
+                'X-CSRF-Token': getCsrfToken()
+            }
+        });
+        
+        if (!response.ok) {
+            return { exists: false, user_has_access: false, status: 'not_extracted' };
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error checking extraction status:', error);
+        return { exists: false, user_has_access: false, status: 'not_extracted' };
+    }
+}
+
+// Grant access to existing extraction
+async function grantExtractionAccess(videoId, button) {
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Granting Access...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/extractions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+                video_id: videoId,
+                grant_access_only: true  // Special flag to only grant access
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to grant access');
+        }
+        
+        // Success - update button to mixer
+        button.innerHTML = '<i class="fas fa-sliders-h"></i> Open Mixer';
+        button.className = 'item-button extract-button extracted';
+        button.disabled = false;
+        
+        // Update click handler
+        button.removeEventListener('click', arguments.callee);
+        button.addEventListener('click', () => {
+            switchToTab('mixer');
+            loadExtractionInMixer(`download_${button.dataset.downloadId}`);
+        });
+        
+        showToast('Access granted! You can now use the mixer.', 'success');
+        
+    } catch (error) {
+        console.error('Error granting access:', error);
+        button.innerHTML = '<i class="fas fa-key"></i> Already Extracted/Grant me Access';
+        button.disabled = false;
+        showToast('Failed to grant access. Please try again.', 'error');
+    }
+}
+
+// Update extract button based on extraction status
+async function updateExtractButton(button, extractionStatus) {
+    // Remove loading class
+    button.classList.remove('loading');
+    
+    if (extractionStatus.status === 'not_extracted') {
+        // Not extracted - show normal extract button
+        button.innerHTML = '<i class="fas fa-music"></i> Extract Stems';
+        button.className = 'item-button extract-button';
+        button.addEventListener('click', () => {
+            openExtractionModal(
+                button.dataset.downloadId,
+                button.dataset.title,
+                button.dataset.filePath,
+                button.dataset.videoId
+            );
+        });
+    } else if (extractionStatus.status === 'extracted') {
+        // User has access - show mixer button
+        button.innerHTML = '<i class="fas fa-sliders-h"></i> Open Mixer';
+        button.className = 'item-button extract-button extracted';
+        button.addEventListener('click', () => {
+            // Switch to mixer tab and load this extraction
+            switchToTab('mixer');
+            loadExtractionInMixer(`download_${button.dataset.downloadId}`);
+        });
+    } else if (extractionStatus.status === 'extracted_no_access') {
+        // Extracted by someone else - show grant access button
+        button.innerHTML = '<i class="fas fa-key"></i> Already Extracted/Grant me Access';
+        button.className = 'item-button extract-button grant-access';
+        button.addEventListener('click', async () => {
+            await grantExtractionAccess(button.dataset.videoId, button);
+        });
+    }
+}
+
 function createDownloadElement(item) {
     // Use download_id for live downloads, id for database downloads, or fallback to video_id
     const itemId = item.download_id || item.id || item.video_id;
@@ -930,8 +1030,8 @@ function createDownloadElement(item) {
         </div>
         <div class="item-actions">
             ${item.status === 'completed' ? `
-                <button class="item-button extract-button" data-download-id="${itemId}" data-title="${item.title}" data-file-path="${item.file_path}" data-video-id="${item.video_id}">
-                    <i class="fas fa-music"></i> Extract Stems
+                <button class="item-button extract-button loading" data-download-id="${itemId}" data-title="${item.title}" data-file-path="${item.file_path}" data-video-id="${item.video_id}">
+                    <i class="fas fa-spinner fa-spin"></i> Checking...
                 </button>
                 <button class="item-button open-folder-button" data-file-path="${item.file_path}">
                     <i class="fas fa-download"></i> Get File
@@ -956,18 +1056,13 @@ function createDownloadElement(item) {
         </div>
     `;
     
-    // Add event listeners
-    setTimeout(() => {
+    // Add event listeners and update extraction status
+    setTimeout(async () => {
         const extractButton = downloadElement.querySelector('.extract-button');
-        if (extractButton) {
-            extractButton.addEventListener('click', () => {
-                openExtractionModal(
-                    extractButton.dataset.downloadId,
-                    extractButton.dataset.title,
-                    extractButton.dataset.filePath,
-                    extractButton.dataset.videoId
-                );
-            });
+        if (extractButton && extractButton.classList.contains('loading')) {
+            // Check extraction status
+            const extractionStatus = await checkExtractionStatus(item.video_id);
+            await updateExtractButton(extractButton, extractionStatus);
         }
         
         const openFolderButton = downloadElement.querySelector('.open-folder-button');

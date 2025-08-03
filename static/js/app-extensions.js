@@ -1,6 +1,64 @@
 // Tab state management
 const TAB_STORAGE_KEY = 'stemtube_active_tab';
 
+// Check extraction status for a video (shared function)
+async function checkExtractionStatus(videoId) {
+    try {
+        const response = await fetch(`/api/downloads/${encodeURIComponent(videoId)}/extraction-status`, {
+            headers: {
+                'X-CSRF-Token': getCsrfToken()
+            }
+        });
+        
+        if (!response.ok) {
+            return { exists: false, user_has_access: false, status: 'not_extracted' };
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error checking extraction status:', error);
+        return { exists: false, user_has_access: false, status: 'not_extracted' };
+    }
+}
+
+// Grant access to existing extraction (shared function)
+async function grantExtractionAccess(videoId, element) {
+    try {
+        const originalHTML = element.innerHTML;
+        element.innerHTML = '<div class="compact-item-title">Granting access...</div><div class="compact-item-status">Please wait</div>';
+        
+        const response = await fetch('/api/extractions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+                video_id: videoId,
+                grant_access_only: true
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to grant access');
+        }
+        
+        const result = await response.json();
+        
+        // Success - show success message and switch to mixer
+        showToast('Access granted! Opening mixer...', 'success');
+        
+        // Switch to mixer tab and load this extraction
+        switchToTab('mixer');
+        loadExtractionInMixer(result.extraction_id);
+        
+    } catch (error) {
+        console.error('Error granting access:', error);
+        element.innerHTML = originalHTML;
+        showToast('Failed to grant access. Please try again.', 'error');
+    }
+}
+
 // Switch to a specific tab and save state
 function switchToTab(tabId) {
     // Update active tab button
@@ -130,11 +188,11 @@ function loadExtractionsForMixer() {
 }
 
 // Update downloads list for extraction (called from loadDownloads)
-function updateDownloadsListForExtraction(data) {
+async function updateDownloadsListForExtraction(data) {
     const container = document.getElementById('downloadsListForExtraction');
     if (!container) return;
     
-    container.innerHTML = '';
+    container.innerHTML = '<div class="loading">Filtering downloads...</div>';
     
     // Filter completed downloads
     const completedDownloads = data.filter(item => item.status === 'completed');
@@ -144,16 +202,52 @@ function updateDownloadsListForExtraction(data) {
         return;
     }
     
+    // Filter downloads based on extraction status
+    const actionableDownloads = [];
+    
+    for (const item of completedDownloads) {
+        try {
+            // Check extraction status for each download
+            const extractionStatus = await checkExtractionStatus(item.video_id);
+            
+            // Include downloads that are:
+            // 1. Not extracted yet (status: 'not_extracted')
+            // 2. Extracted by someone else but user has no access (status: 'extracted_no_access')
+            if (extractionStatus.status === 'not_extracted' || extractionStatus.status === 'extracted_no_access') {
+                actionableDownloads.push({
+                    ...item,
+                    extractionStatus: extractionStatus
+                });
+            }
+        } catch (error) {
+            console.warn('Error checking extraction status for', item.video_id, error);
+            // On error, assume not extracted and include it
+            actionableDownloads.push({
+                ...item,
+                extractionStatus: { status: 'not_extracted' }
+            });
+        }
+    }
+    
+    container.innerHTML = '';
+    
+    if (actionableDownloads.length === 0) {
+        container.innerHTML = '<div class="empty-state">No downloads available for extraction</div>';
+        return;
+    }
+    
     // Sort by creation time (newest first)
-    completedDownloads.sort((a, b) => {
+    actionableDownloads.sort((a, b) => {
         const timeA = isNaN(a.created_at) ? new Date(a.created_at) : new Date(parseInt(a.created_at) * 1000);
         const timeB = isNaN(b.created_at) ? new Date(b.created_at) : new Date(parseInt(b.created_at) * 1000);
         return timeB - timeA;
     });
     
-    completedDownloads.forEach(item => {
+    actionableDownloads.forEach(item => {
         const compactElement = createCompactDownloadElement(item);
-        container.appendChild(compactElement);
+        if (compactElement) {
+            container.appendChild(compactElement);
+        }
     });
 }
 
@@ -177,7 +271,11 @@ function updateExtractionsListForMixer(data) {
     
     completedExtractions.forEach(item => {
         const compactElement = createCompactExtractionElement(item);
-        container.appendChild(compactElement);
+        if (compactElement) {
+            container.appendChild(compactElement);
+        } else {
+            console.warn('Failed to create compact element for extraction:', item);
+        }
     });
 }
 
@@ -190,9 +288,20 @@ function createCompactDownloadElement(item) {
     element.dataset.downloadId = itemId;
     element.dataset.videoId = item.video_id;
     
+    // Determine status text based on extraction status
+    let statusText = 'Ready for extraction';
+    let statusClass = '';
+    
+    if (item.extractionStatus) {
+        if (item.extractionStatus.status === 'extracted_no_access') {
+            statusText = 'Already extracted - click for access';
+            statusClass = 'extracted-no-access';
+        }
+    }
+    
     element.innerHTML = `
         <div class="compact-item-title" title="${item.title}">${item.title}</div>
-        <div class="compact-item-status">Ready for extraction</div>
+        <div class="compact-item-status ${statusClass}">${statusText}</div>
     `;
     
     element.addEventListener('click', () => {
@@ -202,8 +311,14 @@ function createCompactDownloadElement(item) {
         });
         element.classList.add('selected');
         
-        // Open extraction modal for this download
-        openExtractionModal(item.video_id, item.title, item.file_path);
+        // Check extraction status to determine action
+        if (item.extractionStatus && item.extractionStatus.status === 'extracted_no_access') {
+            // Extracted by someone else - grant access directly
+            grantExtractionAccess(item.video_id, element);
+        } else {
+            // Not extracted - open extraction modal
+            openExtractionModal(itemId, item.title, item.file_path, item.video_id);
+        }
     });
     
     return element;
@@ -211,7 +326,13 @@ function createCompactDownloadElement(item) {
 
 // Create compact extraction element for mixer panel
 function createCompactExtractionElement(item) {
-    const itemId = item.extraction_id || item.id || item.video_id;
+    // Use extraction_id from API (format: download_X for historical, timestamp_X for live)
+    const itemId = item.extraction_id;
+    
+    if (!itemId) {
+        console.error('No extraction_id found for item:', item);
+        return null;
+    }
     
     const element = document.createElement('div');
     element.className = 'extraction-item-compact';

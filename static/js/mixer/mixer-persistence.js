@@ -36,6 +36,10 @@ class MixerPersistence {
                     horizontal: this.mixer.zoomLevels.horizontal,
                     vertical: this.mixer.zoomLevels.vertical
                 },
+                pitchTempo: this.mixer.pitchTempoControl ? this.mixer.pitchTempoControl.getState() : {
+                    pitch: 0,
+                    tempo: 100
+                },
                 tracks: {}
             };
             
@@ -97,6 +101,11 @@ class MixerPersistence {
                 if (this.mixer.waveform && this.mixer.waveform.updateZoom) {
                     this.mixer.waveform.updateZoom();
                 }
+            }
+            
+            // Restaurer les réglages pitch/tempo
+            if (state.pitchTempo && this.mixer.pitchTempoControl) {
+                this.mixer.pitchTempoControl.restoreState(state.pitchTempo);
             }
             
             return true;

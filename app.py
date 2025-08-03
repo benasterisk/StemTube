@@ -607,6 +607,42 @@ def get_download_status(download_id):
         'error_message': item.error_message
     })
 
+@app.route('/api/downloads/<video_id>/extraction-status', methods=['GET'])
+@api_login_required
+def check_video_extraction_status(video_id):
+    """Check extraction status for a video_id."""
+    try:
+        # Default model (can be made configurable later)
+        model_name = 'htdemucs'
+        
+        # Check if extraction exists globally
+        global_extraction = db_find_global_extraction(video_id, model_name)
+        
+        if not global_extraction:
+            return jsonify({
+                'exists': False,
+                'user_has_access': False,
+                'status': 'not_extracted'
+            })
+        
+        # Check if current user has access to this extraction
+        user_extractions = db_list_extractions(current_user.id)
+        user_has_access = any(
+            ext['video_id'] == video_id and ext.get('extracted') == 1 
+            for ext in user_extractions
+        )
+        
+        return jsonify({
+            'exists': True,
+            'user_has_access': user_has_access,
+            'status': 'extracted' if user_has_access else 'extracted_no_access',
+            'extraction_model': global_extraction.get('extraction_model'),
+            'extracted_at': global_extraction.get('extracted_at')
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/downloads', methods=['POST'])
 @api_login_required
 def add_download():
@@ -972,14 +1008,33 @@ def add_extraction():
     for attempt in range(max_retries + 1):
         try:
             video_id = data.get('video_id')
-            model_name = data['model_name']
+            model_name = data.get('model_name', 'htdemucs')  # Default model
+            grant_access_only = data.get('grant_access_only', False)
             
             print(f"=== EXTRACTION DEBUG START (Attempt {attempt + 1}/{max_retries + 1}) ===")
             print(f"User: {current_user.username} (ID: {current_user.id})")
             print(f"Received data: {data}")
             print(f"Video ID: {video_id}")
             print(f"Model: {model_name}")
+            print(f"Grant access only: {grant_access_only}")
             print(f"Audio path: {data.get('audio_path')}")
+            
+            # Special case: only grant access to existing extraction
+            if grant_access_only:
+                if not video_id:
+                    return jsonify({'error': 'video_id required for grant_access_only'}), 400
+                    
+                existing_extraction = db_find_global_extraction(video_id, model_name)
+                if existing_extraction:
+                    print(f"Granting access to existing extraction for user {current_user.id}")
+                    db_add_user_extraction_access(current_user.id, existing_extraction)
+                    return jsonify({
+                        'extraction_id': f"download_{existing_extraction['id']}",
+                        'message': f'Access granted to existing extraction',
+                        'existing': True
+                    })
+                else:
+                    return jsonify({'error': 'No extraction found for this video'}), 404
             
             # Use atomic check/reserve operation to prevent race conditions
             if video_id:
