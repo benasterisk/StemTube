@@ -66,6 +66,7 @@ class StemsExtractor:
     def __init__(self):
         """Initialize the stems extractor."""
         self.extraction_queue = queue.Queue()
+        self.queued_extractions: Dict[str, ExtractionItem] = {}
         self.active_extractions: Dict[str, ExtractionItem] = {}
         self.completed_extractions: Dict[str, ExtractionItem] = {}
         self.failed_extractions: Dict[str, ExtractionItem] = {}
@@ -117,6 +118,7 @@ class StemsExtractor:
             print(f"Falling back to default directory: {self.default_output_dir}")
             item.output_dir = self.default_output_dir
         
+        self.queued_extractions[item.extraction_id] = item
         self.extraction_queue.put(item)
         return item.extraction_id
     
@@ -160,15 +162,20 @@ class StemsExtractor:
             return True
         
         # Check if the extraction is in the queue
-        for _ in range(self.extraction_queue.qsize()):
-            item = self.extraction_queue.get()
-            if item.extraction_id == extraction_id:
-                item.status = ExtractionStatus.CANCELLED
-                self.failed_extractions[extraction_id] = item
-                return True
-            else:
-                # Put the item back in the queue
-                self.extraction_queue.put(item)
+        if extraction_id in self.queued_extractions:
+            item = self.queued_extractions[extraction_id]
+            item.status = ExtractionStatus.CANCELLED
+            del self.queued_extractions[extraction_id]
+            self.failed_extractions[extraction_id] = item
+            # Remove from queue as well
+            temp_items = []
+            for _ in range(self.extraction_queue.qsize()):
+                queued_item = self.extraction_queue.get()
+                if queued_item.extraction_id != extraction_id:
+                    temp_items.append(queued_item)
+            for queued_item in temp_items:
+                self.extraction_queue.put(queued_item)
+            return True
         
         return False
     
@@ -193,12 +200,9 @@ class StemsExtractor:
         if extraction_id in self.failed_extractions:
             return self.failed_extractions[extraction_id]
         
-        # Check queue
-        for _ in range(self.extraction_queue.qsize()):
-            item = self.extraction_queue.get()
-            self.extraction_queue.put(item)
-            if item.extraction_id == extraction_id:
-                return item
+        # Check queued extractions
+        if extraction_id in self.queued_extractions:
+            return self.queued_extractions[extraction_id]
         
         return None
     
@@ -208,16 +212,9 @@ class StemsExtractor:
         Returns:
             Dictionary with active, queued, completed, and failed extractions.
         """
-        # Get queued extractions
-        queued_extractions = []
-        for _ in range(self.extraction_queue.qsize()):
-            item = self.extraction_queue.get()
-            queued_extractions.append(item)
-            self.extraction_queue.put(item)
-        
         return {
             "active": list(self.active_extractions.values()),
-            "queued": queued_extractions,
+            "queued": list(self.queued_extractions.values()),
             "completed": list(self.completed_extractions.values()),
             "failed": list(self.failed_extractions.values())
         }
@@ -256,6 +253,10 @@ class StemsExtractor:
             try:
                 # Get the next extraction item
                 item = self.extraction_queue.get(block=False)
+                
+                # Remove from queued extractions
+                if item.extraction_id in self.queued_extractions:
+                    del self.queued_extractions[item.extraction_id]
                 
                 # Check if the extraction was cancelled
                 if item.status == ExtractionStatus.CANCELLED:
