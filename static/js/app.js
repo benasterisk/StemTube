@@ -1171,7 +1171,7 @@ function createExtractionElement(item) {
         <div class="item-actions">
             ${item.status === 'completed' ? `
                 <div class="action-buttons">
-                    <button class="item-button open-mixer-button" data-extraction-id="${item.extraction_id}">
+                    <button class="item-button open-mixer-button extracted" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-sliders-h"></i> Mix Stems
                     </button>
                     <button class="item-button open-folder-button" data-file-path="${getFirstOutputPath(item)}" data-extraction-id="${item.extraction_id}">
