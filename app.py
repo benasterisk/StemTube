@@ -61,7 +61,8 @@ from core.downloads_db import (
     list_extractions_for as db_list_extractions,
     set_extraction_in_progress as db_set_extraction_in_progress,
     set_user_extraction_in_progress as db_set_user_extraction_in_progress,
-    clear_extraction_in_progress as db_clear_extraction_in_progress
+    clear_extraction_in_progress as db_clear_extraction_in_progress,
+    cleanup_stuck_extractions
 )
 
 # ------------------------------------------------------------------
@@ -70,6 +71,7 @@ from core.downloads_db import (
 ensure_ffmpeg_available()
 init_db()
 init_downloads_table()
+cleanup_stuck_extractions()  # Clean up any stuck extractions from previous runs
 
 # ------------------------------------------------------------------
 # Flask & SocketIO setup
@@ -177,8 +179,10 @@ class UserSessionManager:
 
     def _emit_complete_with_room(self, item_id, title=None, file_path=None, room_key=None, user_id=None):
         if title:  # download finished
-            # Get complete download information from download manager to include video_id
-            video_id = None
+            # Extract video_id from download_id as a reliable fallback (format: "video_id_timestamp")
+            video_id = item_id.split('_')[0] if '_' in item_id else None
+            
+            # Try to get video_id from download manager for verification
             if user_id:
                 dm = self.get_download_manager()
                 download_item = None
@@ -188,10 +192,14 @@ class UserSessionManager:
                     for item in dm.get_all_downloads().get(status, []):
                         if item.download_id == item_id:
                             download_item = item
-                            video_id = item.video_id  # Extract video_id for WebSocket event
+                            # Use the actual video_id from the item if found, otherwise keep the extracted one
+                            if item.video_id:
+                                video_id = item.video_id
                             break
                     if download_item:
                         break
+                
+                print(f"[DEBUG] Download completion: item_id={item_id}, found_in_manager={download_item is not None}, video_id={video_id}")
             
             # Include video_id in the WebSocket event for frontend deduplication
             socketio.emit('download_complete', {
@@ -1301,6 +1309,200 @@ def create_zip_for_extraction(extraction_id):
         return jsonify({'error': str(e), 'success': False}), 500
 
 # ------------------------------------------------------------------
+# Admin Cleanup API Routes
+# ------------------------------------------------------------------
+
+@app.route('/api/admin/cleanup/downloads', methods=['GET'])
+@api_login_required
+def admin_get_all_downloads():
+    """Get all downloads across all users for admin cleanup interface."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        from core.downloads_db import get_all_downloads_for_admin
+        downloads = get_all_downloads_for_admin()
+        return jsonify({'downloads': downloads})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/storage-stats', methods=['GET'])
+@api_login_required  
+def admin_get_storage_stats():
+    """Get storage usage statistics for admin dashboard."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        from core.downloads_db import get_storage_usage_stats
+        from core.file_cleanup import get_downloads_directory_usage, format_file_size
+        
+        db_stats = get_storage_usage_stats()
+        fs_stats = get_downloads_directory_usage()
+        
+        # Format sizes for display
+        stats = {
+            'database': db_stats,
+            'filesystem': {
+                'total_size': format_file_size(fs_stats['total_size']),
+                'total_size_bytes': fs_stats['total_size'],
+                'total_files': fs_stats['total_files'],
+                'audio_size': format_file_size(fs_stats['audio_size']),
+                'audio_files': fs_stats['audio_files'], 
+                'stem_size': format_file_size(fs_stats['stem_size']),
+                'stem_files': fs_stats['stem_files'],
+                'other_size': format_file_size(fs_stats['other_size']),
+                'other_files': fs_stats['other_files']
+            }
+        }
+        
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/downloads/<int:global_download_id>', methods=['DELETE'])
+@api_login_required
+def admin_delete_download_completely(global_download_id):
+    """Delete a download completely including all files and database records."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        from core.downloads_db import delete_download_completely
+        from core.file_cleanup import delete_download_files
+        
+        # Delete from database first to get download info
+        success, message, download_info = delete_download_completely(global_download_id)
+        
+        if not success:
+            return jsonify({'error': message}), 400
+        
+        file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
+        
+        # Delete associated files if we have download info
+        if download_info:
+            file_success, file_message, file_cleanup_stats = delete_download_files(download_info)
+            if not file_success:
+                # Log the error but don't fail the entire operation since DB is already updated
+                print(f"File cleanup warning: {file_message}")
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'file_cleanup': file_cleanup_stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/downloads/<int:global_download_id>/reset-extraction', methods=['POST'])
+@api_login_required
+def admin_reset_extraction_status(global_download_id):
+    """Reset extraction status for a download while keeping the download record."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        from core.downloads_db import reset_extraction_status, get_all_downloads_for_admin
+        from core.file_cleanup import delete_extraction_files_only
+        
+        # Get download info before resetting
+        all_downloads = get_all_downloads_for_admin()
+        download_info = next((d for d in all_downloads if d['global_id'] == global_download_id), None)
+        
+        if not download_info:
+            return jsonify({'error': 'Download not found'}), 404
+        
+        # Reset database status
+        success, message = reset_extraction_status(global_download_id)
+        
+        if not success:
+            return jsonify({'error': message}), 400
+        
+        # Delete extraction files
+        file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
+        if download_info.get('extracted'):
+            file_success, file_message, file_cleanup_stats = delete_extraction_files_only(download_info)
+            if not file_success:
+                print(f"File cleanup warning: {file_message}")
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'file_cleanup': file_cleanup_stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/downloads/bulk-delete', methods=['POST'])
+@api_login_required
+def admin_bulk_delete_downloads():
+    """Bulk delete multiple downloads."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        data = request.json
+        download_ids = data.get('download_ids', [])
+        
+        if not download_ids:
+            return jsonify({'error': 'No download IDs provided'}), 400
+        
+        from core.downloads_db import delete_download_completely, get_all_downloads_for_admin
+        from core.file_cleanup import delete_download_files
+        
+        # Get all downloads info first
+        all_downloads = get_all_downloads_for_admin()
+        downloads_to_delete = {d['global_id']: d for d in all_downloads if d['global_id'] in download_ids}
+        
+        results = []
+        total_freed = 0
+        
+        for download_id in download_ids:
+            try:
+                download_info_dict = downloads_to_delete.get(download_id)
+                
+                # Delete from database
+                success, message, download_info = delete_download_completely(download_id)
+                
+                file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
+                
+                # Delete files using either the retrieved info or the pre-fetched info
+                cleanup_info = download_info or download_info_dict
+                if cleanup_info:
+                    file_success, file_message, file_cleanup_stats = delete_download_files(cleanup_info)
+                    total_freed += file_cleanup_stats['total_size_freed']
+                
+                results.append({
+                    'download_id': download_id,
+                    'success': success,
+                    'message': message,
+                    'file_cleanup': file_cleanup_stats
+                })
+                
+            except Exception as e:
+                results.append({
+                    'download_id': download_id,
+                    'success': False,
+                    'message': str(e),
+                    'file_cleanup': {'files_deleted': [], 'total_size_freed': 0, 'errors': [str(e)]}
+                })
+        
+        successful_deletions = sum(1 for r in results if r['success'])
+        
+        return jsonify({
+            'success': True,
+            'deleted_count': successful_deletions,
+            'total_count': len(download_ids),
+            'total_size_freed': total_freed,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ------------------------------------------------------------------
 # Remaining API routes unchanged ...
 # ------------------------------------------------------------------
 @app.route('/api/config', methods=['GET'])
@@ -1325,6 +1527,13 @@ def update_config():
     data = request.json or {}
     for k, v in data.items():
         update_setting(k, v)
+        
+        # Apply GPU setting immediately without restart
+        if k == 'use_gpu_for_extraction':
+            se = user_session_manager.get_stems_extractor()
+            se.set_use_gpu(v)
+            print(f"GPU setting updated to {v}, using GPU: {se.using_gpu}")
+    
     return jsonify({'success': True})
 
 @app.route('/api/config/ffmpeg/check', methods=['GET'])
