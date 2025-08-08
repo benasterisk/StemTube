@@ -1172,7 +1172,7 @@ function createExtractionElement(item) {
             ${item.status === 'completed' ? `
                 <div class="action-buttons">
                     <button class="item-button open-mixer-button extracted" data-extraction-id="${item.extraction_id}">
-                        <i class="fas fa-sliders-h"></i> Mix Stems
+                        <i class="fas fa-sliders-h"></i> Open Mixer
                     </button>
                     <button class="item-button open-folder-button" data-file-path="${getFirstOutputPath(item)}" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-download"></i> Get Tracks
@@ -1550,7 +1550,7 @@ function updateExtractionComplete(data) {
     actionsContainer.innerHTML = `
         <div class="action-buttons">
             <button class="item-button open-mixer-button extracted" data-extraction-id="${data.extraction_id}">
-                <i class="fas fa-sliders-h"></i> Mix Stems
+                <i class="fas fa-sliders-h"></i> Open Mixer
             </button>
             <button class="item-button open-folder-button" data-file-path="${getFirstOutputPath(data)}" data-extraction-id="${data.extraction_id}">
                 <i class="fas fa-download"></i> Get Tracks
