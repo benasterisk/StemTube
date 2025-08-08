@@ -589,6 +589,7 @@ function startDownload() {
                 'Video already downloaded - showing existing download';
             showToast(data.message || defaultMessage, messageType);
             loadDownloads(); // Refresh the list to show the existing download
+            loadExtractions(); // Also refresh extractions in case user was granted access to existing extraction
         } else {
             // New download - add to UI immediately
             const downloadElement = createDownloadElement({
