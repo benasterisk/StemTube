@@ -82,6 +82,13 @@ function switchToTab(tabId) {
     // Update left panel content based on active tab
     updateLeftPanelContent(tabId);
     
+    // Refresh data when switching to specific tabs
+    if (tabId === 'extractions') {
+        loadExtractions(); // Refresh extractions list
+    } else if (tabId === 'downloads') {
+        loadDownloads(); // Refresh downloads list
+    }
+    
     // Save current tab to localStorage
     try {
         localStorage.setItem(TAB_STORAGE_KEY, tabId);
