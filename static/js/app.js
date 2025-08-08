@@ -1654,6 +1654,38 @@ function updateExtractionComplete(data) {
             window.location.href = `/api/download-file?file_path=${encodeURIComponent(filePath)}`;
         });
     }
+    
+    // Also update the corresponding Extract Stems button in Downloads tab
+    if (data.video_id) {
+        updateDownloadsTabExtractButton(data.video_id, data.extraction_id);
+    }
+}
+
+function updateDownloadsTabExtractButton(videoId, extractionId) {
+    // Find all download elements that match this video_id
+    const downloadElements = document.querySelectorAll('#downloadsContainer .download-item');
+    
+    downloadElements.forEach(downloadElement => {
+        const extractButton = downloadElement.querySelector('.extract-button');
+        if (extractButton && extractButton.dataset.videoId === videoId) {
+            // Update this button to show "Open Mixer" state
+            extractButton.innerHTML = '<i class="fas fa-sliders-h"></i> Open Mixer';
+            extractButton.className = 'item-button extract-button extracted';
+            
+            // Remove any existing event listeners by cloning the button
+            const newButton = extractButton.cloneNode(true);
+            extractButton.parentNode.replaceChild(newButton, extractButton);
+            
+            // Add new event listener for mixer functionality
+            newButton.addEventListener('click', () => {
+                // Switch to mixer tab and load this extraction
+                switchToTab('mixer');
+                loadExtractionInMixer(extractionId);
+            });
+            
+            console.log(`Updated Extract Stems button to Open Mixer for video_id: ${videoId}`);
+        }
+    });
 }
 
 function updateExtractionError(data) {

@@ -269,7 +269,11 @@ class UserSessionManager:
     def _emit_extraction_complete_with_room(self, item_id, title=None, video_id=None, room_key=None, user_id=None, item=None):
         """Handle extraction completion - always emits extraction_complete event."""
         print(f"[CALLBACK DEBUG] Extraction finished: item_id={item_id}, title={title}, video_id={video_id}, user_id={user_id}")
-        socketio.emit('extraction_complete', {'extraction_id': item_id}, room=room_key or self._key())
+        socketio.emit('extraction_complete', {
+            'extraction_id': item_id,
+            'video_id': video_id,
+            'title': title
+        }, room=room_key or self._key())
         
         # Persist completed extraction to downloads database
         if user_id and video_id and item:
