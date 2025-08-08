@@ -1549,7 +1549,7 @@ function updateExtractionComplete(data) {
     
     actionsContainer.innerHTML = `
         <div class="action-buttons">
-            <button class="item-button open-mixer-button" data-extraction-id="${data.extraction_id}">
+            <button class="item-button open-mixer-button extracted" data-extraction-id="${data.extraction_id}">
                 <i class="fas fa-sliders-h"></i> Mix Stems
             </button>
             <button class="item-button open-folder-button" data-file-path="${getFirstOutputPath(data)}" data-extraction-id="${data.extraction_id}">
