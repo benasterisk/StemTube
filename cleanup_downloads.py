@@ -417,6 +417,10 @@ class StemTubeCleanup:
             print()
             print("✅ Cleanup completed successfully!")
             print("ℹ️  User accounts have been preserved.")
+            print()
+            print("⚠️  IMPORTANT: If the StemTube application is currently running,")
+            print("   you need to restart it to clear cached extraction data from memory.")
+            print("   Otherwise, old extractions may still appear in the UI.")
         else:
             print()
             print("🔍 Dry run completed. Use --force to execute the actual cleanup.")

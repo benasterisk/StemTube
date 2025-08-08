@@ -139,6 +139,18 @@ If you need to recover after cleanup:
 3. **Consider `--keep-recent`** to preserve recent downloads
 4. **Run during maintenance windows** when users aren't active
 5. **Monitor disk space** before and after cleanup
+6. **Restart StemTube app** after cleanup to clear cached data from memory
+
+## Important Note About Memory Cache
+
+⚠️ **After running cleanup, you must restart the StemTube application** to clear cached extraction data from memory. Otherwise, old extractions may still appear in the UI even though they've been deleted from the database and filesystem.
+
+```bash
+# After cleanup, restart the application
+# Stop current instance (Ctrl+C if running in terminal)
+# Then restart:
+python app.py
+```
 
 ## Troubleshooting
 
