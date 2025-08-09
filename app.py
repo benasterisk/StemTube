@@ -63,7 +63,8 @@ from core.downloads_db import (
     set_extraction_in_progress as db_set_extraction_in_progress,
     set_user_extraction_in_progress as db_set_user_extraction_in_progress,
     clear_extraction_in_progress as db_clear_extraction_in_progress,
-    cleanup_stuck_extractions
+    cleanup_stuck_extractions,
+    cleanup_duplicate_user_downloads
 )
 
 # ------------------------------------------------------------------
@@ -91,6 +92,7 @@ ensure_ffmpeg_available()
 init_db()
 init_downloads_table()
 cleanup_stuck_extractions()  # Clean up any stuck extractions from previous runs
+cleanup_duplicate_user_downloads()  # Clean up duplicate user_downloads records
 
 # ------------------------------------------------------------------
 # Flask & SocketIO setup
@@ -637,10 +639,15 @@ def get_all_downloads():
             # Skip if this video is already in the live session
             if db_item['video_id'] in live_video_ids:
                 continue
+
+            # Skip if download was removed (file_path is NULL but extraction might remain)
+            if not db_item['file_path']:
+                continue
                 
             # Map database fields to frontend format
             history.append({
                 'download_id': db_item['id'],  # Use database ID as download_id for historical items
+                'global_download_id': db_item['global_download_id'],  # Add global_download_id for remove functionality
                 'video_id': db_item['video_id'],
                 'title': db_item['title'],
                 'thumbnail_url': db_item['thumbnail'],  # Map thumbnail -> thumbnail_url
@@ -1030,6 +1037,7 @@ def get_all_extractions():
             # Map database fields to frontend format
             history.append({
                 'extraction_id': f"download_{db_item['id']}",  # Use download ID as extraction_id
+                'global_download_id': db_item['global_download_id'],  # Add global_download_id for remove functionality
                 'video_id': db_item['video_id'],
                 'title': db_item['title'],
                 'audio_path': db_item['file_path'],  # Use the download file path as audio path
@@ -1383,6 +1391,128 @@ def create_zip_for_extraction(extraction_id):
         
     except Exception as e:
         return jsonify({'error': str(e), 'success': False}), 500
+
+# ------------------------------------------------------------------
+# User View Management API Routes
+# ------------------------------------------------------------------
+
+@app.route('/api/user/downloads/<int:download_id>/remove-from-list', methods=['DELETE'])
+@api_login_required
+def remove_download_from_user_list(download_id):
+    """Remove a download from user's personal list (keeps file and global record)."""
+    try:
+        from core.downloads_db import remove_user_download_access
+        success, message = remove_user_download_access(current_user.id, download_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'error': message}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user/extractions/<int:download_id>/remove-from-list', methods=['DELETE'])
+@api_login_required  
+def remove_extraction_from_user_list(download_id):
+    """Remove an extraction from user's personal list (keeps extraction and global record)."""
+    try:
+        from core.downloads_db import remove_user_extraction_access
+        success, message = remove_user_extraction_access(current_user.id, download_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'error': message}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user/downloads/bulk-remove-from-list', methods=['POST'])
+@api_login_required
+def bulk_remove_downloads_from_user_list():
+    """Remove multiple downloads from user's personal list."""
+    try:
+        data = request.json
+        download_ids = data.get('download_ids', [])
+        
+        if not download_ids:
+            return jsonify({'error': 'No download IDs provided'}), 400
+        
+        from core.downloads_db import remove_user_download_access
+        
+        results = []
+        successful_removals = 0
+        
+        for download_id in download_ids:
+            try:
+                success, message = remove_user_download_access(current_user.id, download_id)
+                if success:
+                    successful_removals += 1
+                results.append({
+                    'download_id': download_id,
+                    'success': success,
+                    'message': message
+                })
+            except Exception as e:
+                results.append({
+                    'download_id': download_id,
+                    'success': False,
+                    'message': f'Error: {str(e)}'
+                })
+        
+        return jsonify({
+            'success': True,
+            'removed_count': successful_removals,
+            'total_count': len(download_ids),
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user/extractions/bulk-remove-from-list', methods=['POST'])
+@api_login_required
+def bulk_remove_extractions_from_user_list():
+    """Remove multiple extractions from user's personal list."""
+    try:
+        data = request.json
+        download_ids = data.get('download_ids', [])  # Note: using download_id for extractions too
+        
+        if not download_ids:
+            return jsonify({'error': 'No download IDs provided'}), 400
+        
+        from core.downloads_db import remove_user_extraction_access
+        
+        results = []
+        successful_removals = 0
+        
+        for download_id in download_ids:
+            try:
+                success, message = remove_user_extraction_access(current_user.id, download_id)
+                if success:
+                    successful_removals += 1
+                results.append({
+                    'download_id': download_id,
+                    'success': success,
+                    'message': message
+                })
+            except Exception as e:
+                results.append({
+                    'download_id': download_id,
+                    'success': False,
+                    'message': f'Error: {str(e)}'
+                })
+        
+        return jsonify({
+            'success': True,
+            'removed_count': successful_removals,
+            'total_count': len(download_ids),
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ------------------------------------------------------------------
 # Admin Cleanup API Routes

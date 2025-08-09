@@ -398,17 +398,22 @@ def add_user_extraction_access(user_id, global_download):
     """Give a user access to an existing extraction by updating their user_downloads record."""
     with _conn() as conn:
         print(f"[DB DEBUG] Adding user extraction access: user_id={user_id}, video_id='{global_download['video_id']}'")
-        # Check if user already has access to this download
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id FROM user_downloads 
-            WHERE user_id=? AND video_id=?
-        """, (user_id, global_download["video_id"]))
-        existing = cursor.fetchone()
-        print(f"[DB DEBUG] Existing user download record: {existing}")
         
-        if existing:
-            # Update existing record
+        # Check if user already has any records for this video_id
+        cursor.execute("""
+            SELECT id, file_path, extracted FROM user_downloads 
+            WHERE user_id=? AND video_id=?
+            ORDER BY created_at DESC
+        """, (user_id, global_download["video_id"]))
+        existing_records = cursor.fetchall()
+        print(f"[DB DEBUG] Found {len(existing_records)} existing records for this video")
+        
+        if existing_records:
+            # Update the most recent record with extraction data
+            best_record = existing_records[0]  # Most recent record
+            print(f"[DB DEBUG] Updating existing record ID {best_record['id']} with extraction data")
+            
             conn.execute("""
                 UPDATE user_downloads 
                 SET extracted=1,
@@ -417,31 +422,36 @@ def add_user_extraction_access(user_id, global_download):
                     stems_paths=?,
                     stems_zip_path=?,
                     extracted_at=?
-                WHERE user_id=? AND video_id=?
+                WHERE id=?
             """, (
                 global_download["extraction_model"],
                 global_download["stems_paths"],
                 global_download["stems_zip_path"],
                 global_download["extracted_at"],
-                user_id,
-                global_download["video_id"]
+                best_record['id']
             ))
+            
+            # Delete any duplicate records for the same user/video
+            if len(existing_records) > 1:
+                duplicate_ids = [record['id'] for record in existing_records[1:]]
+                print(f"[DB DEBUG] Cleaning up {len(duplicate_ids)} duplicate records: {duplicate_ids}")
+                for dup_id in duplicate_ids:
+                    cursor.execute("DELETE FROM user_downloads WHERE id=?", (dup_id,))
+                    
         else:
-            # Create new user access record
+            # Create new user access record (extraction-only, no download data)
+            print(f"[DB DEBUG] Creating new extraction-only record")
             conn.execute("""
                 INSERT INTO user_downloads
                     (user_id, global_download_id, video_id, title, thumbnail, file_path, media_type, quality, 
                      extracted, extraction_model, stems_paths, stems_zip_path, extracted_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, 1, ?, ?, ?, ?)
             """, (
                 user_id,
                 global_download["id"],
                 global_download["video_id"],
                 global_download["title"],
                 global_download["thumbnail"],
-                global_download["file_path"],
-                global_download["media_type"],
-                global_download["quality"],
                 global_download["extraction_model"],
                 global_download["stems_paths"],
                 global_download["stems_zip_path"],
@@ -631,3 +641,170 @@ def cleanup_stuck_extractions():
             print(f"[STARTUP] Cleaned up {stuck_count} stuck extractions")
         else:
             print("[STARTUP] No stuck extractions found")
+
+def cleanup_duplicate_user_downloads():
+    """Clean up duplicate user_downloads records on application startup."""
+    with _conn() as conn:
+        cursor = conn.cursor()
+        
+        print("[STARTUP] Checking for duplicate user_downloads records...")
+        
+        # Find users with multiple records for the same video_id
+        cursor.execute("""
+            SELECT user_id, video_id, COUNT(*) as count
+            FROM user_downloads
+            GROUP BY user_id, video_id
+            HAVING COUNT(*) > 1
+        """)
+        duplicates = cursor.fetchall()
+        
+        if not duplicates:
+            print("[STARTUP] No duplicate user_downloads records found")
+            return
+        
+        print(f"[STARTUP] Found {len(duplicates)} sets of duplicate records to clean up")
+        
+        for dup in duplicates:
+            user_id, video_id, count = dup
+            print(f"[STARTUP] Cleaning up {count} duplicate records for user {user_id}, video {video_id}")
+            
+            # Get all records for this user/video combination, ordered by creation date
+            cursor.execute("""
+                SELECT * FROM user_downloads 
+                WHERE user_id=? AND video_id=?
+                ORDER BY created_at ASC
+            """, (user_id, video_id))
+            
+            records = cursor.fetchall()
+            if len(records) <= 1:
+                continue
+                
+            # Merge all records into the most complete one (preferring records with file_path)
+            best_record = None
+            records_to_delete = []
+            
+            for record in records:
+                if best_record is None:
+                    best_record = record
+                else:
+                    # Prefer record with file_path (download data)
+                    if record['file_path'] and not best_record['file_path']:
+                        records_to_delete.append(best_record['id'])
+                        best_record = record
+                    # If both have file_path or both don't, prefer the newer one
+                    elif bool(record['file_path']) == bool(best_record['file_path']):
+                        if record['created_at'] > best_record['created_at']:
+                            records_to_delete.append(best_record['id'])
+                            best_record = record
+                        else:
+                            records_to_delete.append(record['id'])
+                    else:
+                        records_to_delete.append(record['id'])
+            
+            # Update the best record with any missing data from other records
+            for record in records:
+                if record['id'] != best_record['id']:
+                    # Merge extraction data if missing in best record
+                    if record['extracted'] and not best_record['extracted']:
+                        cursor.execute("""
+                            UPDATE user_downloads 
+                            SET extracted=?, extraction_model=?, stems_paths=?, 
+                                stems_zip_path=?, extracted_at=?
+                            WHERE id=?
+                        """, (
+                            record['extracted'], record['extraction_model'], 
+                            record['stems_paths'], record['stems_zip_path'], 
+                            record['extracted_at'], best_record['id']
+                        ))
+                        print(f"[STARTUP] Merged extraction data into record {best_record['id']}")
+                    
+                    # Merge download data if missing in best record
+                    if record['file_path'] and not best_record['file_path']:
+                        cursor.execute("""
+                            UPDATE user_downloads 
+                            SET file_path=?, media_type=?, quality=?
+                            WHERE id=?
+                        """, (
+                            record['file_path'], record['media_type'], 
+                            record['quality'], best_record['id']
+                        ))
+                        print(f"[STARTUP] Merged download data into record {best_record['id']}")
+            
+            # Delete duplicate records
+            for record_id in records_to_delete:
+                cursor.execute("DELETE FROM user_downloads WHERE id=?", (record_id,))
+                print(f"[STARTUP] Deleted duplicate record {record_id}")
+        
+        conn.commit()
+        print(f"[STARTUP] Cleaned up duplicate user_downloads records")
+
+# ============ USER VIEW MANAGEMENT FUNCTIONS ============
+
+def remove_user_download_access(user_id, global_download_id):
+    """Remove user's access to a download without affecting global record or files."""
+    with _conn() as conn:
+        cursor = conn.cursor()
+        
+        try:
+            # Check if user has access to this download and if it has extraction
+            cursor.execute("""
+                SELECT id, title, extracted FROM user_downloads 
+                WHERE user_id=? AND global_download_id=?
+            """, (user_id, global_download_id))
+            
+            user_download = cursor.fetchone()
+            if not user_download:
+                return False, "Download not found in your list"
+            
+            # If this record has an extraction, keep the record but clear download fields
+            # Otherwise, delete the entire record
+            if user_download['extracted']:
+                # Keep record but clear download-specific fields (keep extraction)
+                cursor.execute("""
+                    UPDATE user_downloads 
+                    SET file_path=NULL, media_type=NULL, quality=NULL
+                    WHERE user_id=? AND global_download_id=?
+                """, (user_id, global_download_id))
+            else:
+                # No extraction, safe to delete entire record
+                cursor.execute("""
+                    DELETE FROM user_downloads 
+                    WHERE user_id=? AND global_download_id=?
+                """, (user_id, global_download_id))
+            
+            conn.commit()
+            return True, f"Removed '{user_download['title']}' from your downloads list"
+            
+        except Exception as e:
+            conn.rollback()
+            return False, f"Database error: {str(e)}"
+
+def remove_user_extraction_access(user_id, global_download_id):
+    """Remove user's access to an extraction without affecting global record or files."""
+    with _conn() as conn:
+        cursor = conn.cursor()
+        
+        try:
+            # Check if user has access to this extraction
+            cursor.execute("""
+                SELECT id, title FROM user_downloads 
+                WHERE user_id=? AND global_download_id=? AND extracted=1
+            """, (user_id, global_download_id))
+            
+            user_extraction = cursor.fetchone()
+            if not user_extraction:
+                return False, "Extraction not found in your list"
+            
+            # Remove only extraction access, keep the download record
+            cursor.execute("""
+                UPDATE user_downloads 
+                SET extracted=0, extraction_model=NULL, stems_paths=NULL, stems_zip_path=NULL, extracted_at=NULL 
+                WHERE user_id=? AND global_download_id=? AND extracted=1
+            """, (user_id, global_download_id))
+            
+            conn.commit()
+            return True, f"Removed '{user_extraction['title']}' from your extractions list"
+            
+        except Exception as e:
+            conn.rollback()
+            return False, f"Database error: {str(e)}"

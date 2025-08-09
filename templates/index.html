@@ -190,6 +190,16 @@
                 
                 <div class="tab-content" id="downloadsTab">
                     <h2>Downloads</h2>
+                    <div class="user-management-controls" id="downloadsManagementControls" style="display: none;">
+                        <div class="bulk-actions">
+                            <label class="bulk-select">
+                                <input type="checkbox" id="selectAllUserDownloads"> Select All
+                            </label>
+                            <button class="action-button danger" id="bulkRemoveDownloadsButton" disabled>
+                                <i class="fas fa-eye-slash"></i> Remove Selected from My List
+                            </button>
+                        </div>
+                    </div>
                     <div class="downloads-container" id="downloadsContainer">
                         <!-- Downloads will be dynamically added here -->
                     </div>
@@ -197,6 +207,16 @@
                 
                 <div class="tab-content" id="extractionsTab">
                     <h2>Extractions</h2>
+                    <div class="user-management-controls" id="extractionsManagementControls" style="display: none;">
+                        <div class="bulk-actions">
+                            <label class="bulk-select">
+                                <input type="checkbox" id="selectAllUserExtractions"> Select All
+                            </label>
+                            <button class="action-button danger" id="bulkRemoveExtractionsButton" disabled>
+                                <i class="fas fa-eye-slash"></i> Remove Selected from My List
+                            </button>
+                        </div>
+                    </div>
                     <div class="extractions-container" id="extractionsContainer">
                         <!-- Extractions will be dynamically added here -->
                     </div>

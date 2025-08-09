@@ -1886,6 +1886,59 @@ body.light-theme .status-badge.not-extracted {
     color: #616161;
 }
 
+/* User Management Controls */
+.user-management-controls {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.user-management-controls .bulk-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+/* User selection checkbox styling */
+.user-item-checkbox {
+    margin-right: var(--spacing-sm);
+}
+
+.user-item.selected {
+    background-color: rgba(29, 185, 84, 0.1);
+    border-color: var(--accent-color);
+}
+
+/* Personal remove button styling */
+.item-button.remove-from-list {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: #ff9800;
+    border-color: rgba(255, 152, 0, 0.3);
+}
+
+.item-button.remove-from-list:hover {
+    background-color: rgba(255, 152, 0, 0.2);
+    border-color: rgba(255, 152, 0, 0.5);
+}
+
+/* Item title container with checkbox */
+.item-title-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.item-title-container .user-item-checkbox {
+    margin: 0;
+    cursor: pointer;
+}
+
+.item-title-container .item-title {
+    flex: 1;
+}
+
 .loading-row td {
     text-align: center;
     padding: var(--spacing-lg);

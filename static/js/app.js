@@ -957,6 +957,9 @@ function loadDownloads() {
             
             // Update left panel if we're on extractions tab
             updateDownloadsListForExtraction(data);
+            
+            // Update user management controls visibility
+            updateUserManagementControls();
         })
         .catch(error => {
             console.error('Error loading downloads:', error);
@@ -1010,6 +1013,9 @@ function loadExtractions() {
             
             // Update left panel if we're on mixer tab
             updateExtractionsListForMixer(data);
+            
+            // Update user management controls visibility
+            updateUserManagementControls();
         })
         .catch(error => {
             console.error('Error loading extractions:', error);
@@ -1120,6 +1126,8 @@ async function updateExtractButton(button, extractionStatus) {
 }
 
 function createDownloadElement(item) {
+    // Debug: log the item structure
+    console.log('createDownloadElement item:', item);
     // Use download_id for live downloads, id for database downloads, or fallback to video_id
     const itemId = item.download_id || item.id || item.video_id;
     
@@ -1132,7 +1140,10 @@ function createDownloadElement(item) {
     
     downloadElement.innerHTML = `
         <div class="item-header">
-            <div class="item-title">${item.title}</div>
+            <div class="item-title-container">
+                <input type="checkbox" class="user-item-checkbox" data-download-id="${item.global_download_id}" value="${item.global_download_id}">
+                <div class="item-title">${item.title}</div>
+            </div>
             <div class="item-status ${statusClass}">${statusText}</div>
         </div>
         <div class="progress-container">
@@ -1152,6 +1163,9 @@ function createDownloadElement(item) {
                 <button class="item-button open-folder-button" data-file-path="${item.file_path}">
                     <i class="fas fa-download"></i> Get File
                 </button>
+                <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                    <i class="fas fa-eye-slash"></i> Remove from List
+                </button>
             ` : ''}
             ${item.status === 'downloading' || item.status === 'queued' ? `
                 <button class="item-button cancel cancel-download-button" data-download-id="${itemId}">
@@ -1166,6 +1180,9 @@ function createDownloadElement(item) {
                     </button>
                     <button class="item-button delete-button" data-download-id="${itemId}">
                         <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                        <i class="fas fa-eye-slash"></i> Remove from List
                     </button>
                 </div>
             ` : ''}
@@ -1253,12 +1270,22 @@ function createDownloadElement(item) {
                 deleteDownload(deleteButton.dataset.downloadId);
             });
         }
+        
+        // Add remove from list button event handler
+        const removeFromListButton = downloadElement.querySelector('.remove-from-list');
+        if (removeFromListButton) {
+            removeFromListButton.addEventListener('click', () => {
+                removeDownloadFromList(removeFromListButton.dataset.downloadId);
+            });
+        }
     }, 0);
     
     return downloadElement;
 }
 
 function createExtractionElement(item) {
+    // Debug: log the item structure
+    console.log('createExtractionElement item:', item);
     const extractionElement = document.createElement('div');
     extractionElement.className = 'extraction-item';
     extractionElement.id = `extraction-${item.extraction_id}`;
@@ -1269,7 +1296,10 @@ function createExtractionElement(item) {
     
     extractionElement.innerHTML = `
         <div class="item-header">
-            <div class="item-title">${title}</div>
+            <div class="item-title-container">
+                <input type="checkbox" class="user-item-checkbox" data-download-id="${item.global_download_id}" value="${item.global_download_id}">
+                <div class="item-title">${title}</div>
+            </div>
             <div class="item-status ${statusClass}">${statusText}</div>
         </div>
         <div class="item-details">
@@ -1296,6 +1326,9 @@ function createExtractionElement(item) {
                     <button class="item-button download-zip-button" data-file-path="${item.zip_path || ''}" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-file-archive"></i> Download All (ZIP)
                     </button>
+                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                        <i class="fas fa-eye-slash"></i> Remove from List
+                    </button>
                 </div>
             ` : ''}
             ${item.status === 'extracting' || item.status === 'queued' ? `
@@ -1311,6 +1344,9 @@ function createExtractionElement(item) {
                     </button>
                     <button class="item-button delete-button" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                        <i class="fas fa-eye-slash"></i> Remove from List
                     </button>
                 </div>
             ` : ''}
@@ -1432,6 +1468,14 @@ function createExtractionElement(item) {
         if (deleteButton) {
             deleteButton.addEventListener('click', () => {
                 deleteExtraction(deleteButton.dataset.extractionId);
+            });
+        }
+        
+        // Add remove from list button event handler
+        const removeFromListButton = extractionElement.querySelector('.remove-from-list');
+        if (removeFromListButton) {
+            removeFromListButton.addEventListener('click', () => {
+                removeExtractionFromList(removeFromListButton.dataset.downloadId);
             });
         }
     }, 0);
@@ -3106,4 +3150,310 @@ function resetExtraction(downloadId) {
 function truncateText(text, maxLength) {
     if (!text || text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+}
+
+// ============ USER VIEW MANAGEMENT FUNCTIONS ============
+
+// Remove download from user's personal list
+function removeDownloadFromList(downloadId) {
+    if (!confirm('Remove this download from your list? This will not delete the actual file.')) {
+        return;
+    }
+    
+    fetch(`/api/user/downloads/${downloadId}/remove-from-list`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.text();
+    })
+    .then(data => {
+        console.log('Raw response:', data);
+        return JSON.parse(data);
+    })
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Remove the element from DOM
+            const downloadElement = document.getElementById(`download-${downloadId}`);
+            if (downloadElement) {
+                downloadElement.remove();
+            }
+            // Update management controls visibility
+            updateUserManagementControls();
+        } else {
+            throw new Error(data.error || 'Remove failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing download from list:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Remove extraction from user's personal list
+function removeExtractionFromList(downloadId) {
+    if (!confirm('Remove this extraction from your list? This will not delete the actual stems.')) {
+        return;
+    }
+    
+    fetch(`/api/user/extractions/${downloadId}/remove-from-list`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Remove the element from DOM - find by download ID since extraction elements use extraction-{id} format
+            const extractionElements = document.querySelectorAll('.extraction-item');
+            extractionElements.forEach(element => {
+                const checkbox = element.querySelector('.user-item-checkbox');
+                if (checkbox && checkbox.dataset.downloadId === downloadId) {
+                    element.remove();
+                }
+            });
+            // Update management controls visibility
+            updateUserManagementControls();
+        } else {
+            throw new Error(data.error || 'Remove failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing extraction from list:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Bulk remove downloads from user's list
+function bulkRemoveDownloads() {
+    const selectedCheckboxes = document.querySelectorAll('#downloadsContainer .user-item-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        showToast('No downloads selected', 'warning');
+        return;
+    }
+    
+    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (!confirm(`Remove ${selectedIds.length} download(s) from your list? This will not delete the actual files.`)) {
+        return;
+    }
+    
+    fetch('/api/user/downloads/bulk-remove-from-list', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+        },
+        body: JSON.stringify({
+            download_ids: selectedIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`Removed ${data.removed_count} download(s) from your list`, 'success');
+            // Remove elements from DOM
+            selectedCheckboxes.forEach(checkbox => {
+                const downloadElement = checkbox.closest('.download-item');
+                if (downloadElement) {
+                    downloadElement.remove();
+                }
+            });
+            // Update management controls
+            updateUserManagementControls();
+        } else {
+            throw new Error(data.error || 'Bulk remove failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error bulk removing downloads:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Bulk remove extractions from user's list
+function bulkRemoveExtractions() {
+    const selectedCheckboxes = document.querySelectorAll('#extractionsContainer .user-item-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        showToast('No extractions selected', 'warning');
+        return;
+    }
+    
+    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (!confirm(`Remove ${selectedIds.length} extraction(s) from your list? This will not delete the actual stems.`)) {
+        return;
+    }
+    
+    fetch('/api/user/extractions/bulk-remove-from-list', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+        },
+        body: JSON.stringify({
+            download_ids: selectedIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`Removed ${data.removed_count} extraction(s) from your list`, 'success');
+            // Remove elements from DOM
+            selectedCheckboxes.forEach(checkbox => {
+                const extractionElement = checkbox.closest('.extraction-item');
+                if (extractionElement) {
+                    extractionElement.remove();
+                }
+            });
+            // Update management controls
+            updateUserManagementControls();
+        } else {
+            throw new Error(data.error || 'Bulk remove failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error bulk removing extractions:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Update visibility and state of user management controls
+function updateUserManagementControls() {
+    // Update downloads management controls
+    const downloadsContainer = document.getElementById('downloadsContainer');
+    const downloadsManagementControls = document.getElementById('downloadsManagementControls');
+    const downloadItems = downloadsContainer.querySelectorAll('.download-item');
+    
+    if (downloadItems.length > 0) {
+        downloadsManagementControls.style.display = 'block';
+    } else {
+        downloadsManagementControls.style.display = 'none';
+    }
+    
+    // Update extractions management controls
+    const extractionsContainer = document.getElementById('extractionsContainer');
+    const extractionsManagementControls = document.getElementById('extractionsManagementControls');
+    const extractionItems = extractionsContainer.querySelectorAll('.extraction-item');
+    
+    if (extractionItems.length > 0) {
+        extractionsManagementControls.style.display = 'block';
+    } else {
+        extractionsManagementControls.style.display = 'none';
+    }
+    
+    // Update bulk action button states
+    updateBulkActionButtons();
+}
+
+// Update bulk action button states based on selection
+function updateBulkActionButtons() {
+    // Downloads bulk button
+    const selectedDownloads = document.querySelectorAll('#downloadsContainer .user-item-checkbox:checked');
+    const bulkRemoveDownloadsButton = document.getElementById('bulkRemoveDownloadsButton');
+    const selectAllUserDownloads = document.getElementById('selectAllUserDownloads');
+    
+    if (bulkRemoveDownloadsButton) {
+        bulkRemoveDownloadsButton.disabled = selectedDownloads.length === 0;
+    }
+    
+    // Update select all checkbox state for downloads
+    if (selectAllUserDownloads) {
+        const totalDownloads = document.querySelectorAll('#downloadsContainer .user-item-checkbox');
+        if (totalDownloads.length === 0) {
+            selectAllUserDownloads.indeterminate = false;
+            selectAllUserDownloads.checked = false;
+        } else if (selectedDownloads.length === totalDownloads.length) {
+            selectAllUserDownloads.indeterminate = false;
+            selectAllUserDownloads.checked = true;
+        } else if (selectedDownloads.length > 0) {
+            selectAllUserDownloads.indeterminate = true;
+        } else {
+            selectAllUserDownloads.indeterminate = false;
+            selectAllUserDownloads.checked = false;
+        }
+    }
+    
+    // Extractions bulk button
+    const selectedExtractions = document.querySelectorAll('#extractionsContainer .user-item-checkbox:checked');
+    const bulkRemoveExtractionsButton = document.getElementById('bulkRemoveExtractionsButton');
+    const selectAllUserExtractions = document.getElementById('selectAllUserExtractions');
+    
+    if (bulkRemoveExtractionsButton) {
+        bulkRemoveExtractionsButton.disabled = selectedExtractions.length === 0;
+    }
+    
+    // Update select all checkbox state for extractions
+    if (selectAllUserExtractions) {
+        const totalExtractions = document.querySelectorAll('#extractionsContainer .user-item-checkbox');
+        if (totalExtractions.length === 0) {
+            selectAllUserExtractions.indeterminate = false;
+            selectAllUserExtractions.checked = false;
+        } else if (selectedExtractions.length === totalExtractions.length) {
+            selectAllUserExtractions.indeterminate = false;
+            selectAllUserExtractions.checked = true;
+        } else if (selectedExtractions.length > 0) {
+            selectAllUserExtractions.indeterminate = true;
+        } else {
+            selectAllUserExtractions.indeterminate = false;
+            selectAllUserExtractions.checked = false;
+        }
+    }
+}
+
+// Initialize user management functionality
+function initializeUserManagement() {
+    // Setup select all checkboxes
+    const selectAllUserDownloads = document.getElementById('selectAllUserDownloads');
+    if (selectAllUserDownloads) {
+        selectAllUserDownloads.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#downloadsContainer .user-item-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActionButtons();
+        });
+    }
+    
+    const selectAllUserExtractions = document.getElementById('selectAllUserExtractions');
+    if (selectAllUserExtractions) {
+        selectAllUserExtractions.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#extractionsContainer .user-item-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActionButtons();
+        });
+    }
+    
+    // Setup bulk action buttons
+    const bulkRemoveDownloadsButton = document.getElementById('bulkRemoveDownloadsButton');
+    if (bulkRemoveDownloadsButton) {
+        bulkRemoveDownloadsButton.addEventListener('click', bulkRemoveDownloads);
+    }
+    
+    const bulkRemoveExtractionsButton = document.getElementById('bulkRemoveExtractionsButton');
+    if (bulkRemoveExtractionsButton) {
+        bulkRemoveExtractionsButton.addEventListener('click', bulkRemoveExtractions);
+    }
+    
+    // Setup event delegation for individual checkboxes
+    document.addEventListener('change', function(event) {
+        if (event.target.classList.contains('user-item-checkbox')) {
+            updateBulkActionButtons();
+        }
+    });
+}
+
+// Call initialization when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeUserManagement);
+} else {
+    initializeUserManagement();
 }
