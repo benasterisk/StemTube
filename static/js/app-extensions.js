@@ -87,6 +87,9 @@ function switchToTab(tabId) {
         loadExtractions(); // Refresh extractions list
     } else if (tabId === 'downloads') {
         loadDownloads(); // Refresh downloads list
+    } else if (tabId === 'admin') {
+        // Initialize admin section to users by default
+        setTimeout(() => switchAdminSection('users'), 100);
     }
     
     // Save current tab to localStorage
@@ -137,8 +140,10 @@ function updateLeftPanelContent(tabId) {
     // Show appropriate content based on tab
     switch (tabId) {
         case 'downloads':
-        case 'admin':
             document.getElementById('searchContent').style.display = 'flex';
+            break;
+        case 'admin':
+            document.getElementById('adminMenuContent').style.display = 'flex';
             break;
         case 'extractions':
             document.getElementById('downloadsContent').style.display = 'flex';
@@ -434,8 +439,63 @@ function restoreMixerIfNeeded() {
     }
 }
 
+// Admin menu functionality
+function switchAdminSection(sectionName) {
+    // Update active admin menu item
+    document.querySelectorAll('.admin-menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const activeItem = document.querySelector(`[data-admin-section="${sectionName}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+    
+    // Show/hide admin sections
+    document.querySelectorAll('.admin-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    const targetSection = document.getElementById(`${sectionName}Section`);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        
+        // Load data for the specific section if needed
+        if (sectionName === 'cleanup') {
+            // Load cleanup data if switching to cleanup section
+            // The cleanup functionality should already be initialized
+            if (typeof loadCleanupData === 'function') {
+                loadCleanupData();
+            }
+        } else if (sectionName === 'users') {
+            // Load admin iframe for users section
+            const adminFrame = document.getElementById('adminFrame');
+            if (adminFrame) {
+                adminFrame.style.display = 'block';
+                // Hide loading text
+                const loadingDiv = adminFrame.previousElementSibling;
+                if (loadingDiv && loadingDiv.classList.contains('loading')) {
+                    loadingDiv.style.display = 'none';
+                }
+            }
+        }
+    }
+}
+
 // Initialize left panel content on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Restore the last active tab or default to downloads
     restoreActiveTab();
+    
+    // Initialize admin menu event listeners
+    document.querySelectorAll('.admin-menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionName = item.dataset.adminSection;
+            if (sectionName) {
+                switchAdminSection(sectionName);
+            }
+        });
+    });
+    
+    // Initialize with users section by default for admin tab
+    switchAdminSection('users');
 });

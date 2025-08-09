@@ -81,14 +81,33 @@
                         <!-- Extractions available for mixing will be dynamically added here -->
                     </div>
                 </div>
+                
+                <!-- Admin Menu (for Admin tab) -->
+                {% if current_user.is_admin %}
+                <div class="left-panel-content" id="adminMenuContent" style="display: none;">
+                    <div class="panel-header">
+                        <h3>Administration</h3>
+                        <p class="panel-subtitle">Select an administrative function</p>
+                    </div>
+                    <div class="admin-menu">
+                        <button class="admin-menu-item active" data-admin-section="users">
+                            <i class="fas fa-users"></i>
+                            <span>Users Administration</span>
+                        </button>
+                        <button class="admin-menu-item" data-admin-section="cleanup">
+                            <i class="fas fa-broom"></i>
+                            <span>System Cleanup</span>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
             </div>
             
             <!-- Right Column: Downloads and Extractions -->
             <div class="column management-column" id="right-panel">
                 <div class="tabs">
                     {% if current_user.is_admin %}
-                    <button class="tab-button" data-tab="admin">Users Administration</button>
-                    <button class="tab-button" data-tab="cleanup">Cleanup</button>
+                    <button class="tab-button" data-tab="admin">Admin</button>
                     {% endif %}
                     <button class="tab-button" data-tab="downloads">Downloads</button>
                     <button class="tab-button" data-tab="extractions">Extractions</button>
@@ -97,73 +116,72 @@
                 
                 {% if current_user.is_admin %}
                 <div class="tab-content" id="adminTab">
-                    <h2>Users Administration</h2>
-                    <div class="admin-container">
-                        <div class="loading">Loading administration interface...</div>
-                        <iframe id="adminFrame" src="/admin/embedded" style="width: 100%; height: 800px; min-height: 800px; border: none; display: none;"></iframe>
+                    <!-- Users Administration Section -->
+                    <div class="admin-section" id="usersSection">
+                        <h2>Users Administration</h2>
+                        <div class="admin-container">
+                            <div class="loading">Loading administration interface...</div>
+                            <iframe id="adminFrame" src="/admin/embedded" style="width: 100%; height: 800px; min-height: 800px; border: none; display: none;"></iframe>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="tab-content" id="cleanupTab">
-                    <h2>System Cleanup</h2>
-                    <div class="cleanup-container">
-                        <!-- Storage Usage Summary -->
-                        <div class="storage-summary" id="storageSummary">
-                            <div class="loading">Loading storage statistics...</div>
-                        </div>
-                        
-                        <!-- Cleanup Controls -->
-                        <div class="cleanup-controls">
-                            <div class="bulk-actions">
-                                <label class="bulk-select">
-                                    <input type="checkbox" id="selectAllDownloads"> Select All
-                                </label>
-                                <button class="action-button danger" id="bulkDeleteButton" disabled>
-                                    <i class="fas fa-trash"></i> Delete Selected
-                                </button>
-                                <button class="action-button warning" id="bulkResetExtractionsButton" disabled>
-                                    <i class="fas fa-undo"></i> Reset Selected Extractions
-                                </button>
-                                <button class="action-button secondary" id="refreshCleanupButton">
-                                    <i class="fas fa-refresh"></i> Refresh
-                                </button>
+                    
+                    <!-- Cleanup Section -->
+                    <div class="admin-section" id="cleanupSection" style="display: none;">
+                        <h2>System Cleanup</h2>
+                        <div class="cleanup-container">
+                            <!-- Cleanup Controls -->
+                            <div class="cleanup-controls">
+                                <div class="bulk-actions">
+                                    <label class="bulk-select">
+                                        <input type="checkbox" id="selectAllDownloads"> Select All
+                                    </label>
+                                    <button class="action-button danger" id="bulkDeleteButton" disabled>
+                                        <i class="fas fa-trash"></i> Delete Selected
+                                    </button>
+                                    <button class="action-button warning" id="bulkResetExtractionsButton" disabled>
+                                        <i class="fas fa-undo"></i> Reset Selected Extractions
+                                    </button>
+                                    <button class="action-button secondary" id="refreshCleanupButton">
+                                        <i class="fas fa-refresh"></i> Refresh
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <!-- Downloads Table -->
-                        <div class="cleanup-table-container">
-                            <table class="cleanup-table" id="cleanupTable">
-                                <thead>
-                                    <tr>
-                                        <th class="checkbox-column">
-                                            <input type="checkbox" id="headerSelectAll">
-                                        </th>
-                                        <th class="sortable" data-sort="video_id">Video ID</th>
-                                        <th class="sortable" data-sort="title">Title</th>
-                                        <th class="sortable" data-sort="users">Users</th>
-                                        <th class="sortable" data-sort="file_size">Size</th>
-                                        <th class="sortable" data-sort="extracted">Extracted</th>
-                                        <th class="sortable" data-sort="created_at">Created</th>
-                                        <th class="actions-column">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="cleanupTableBody">
-                                    <tr class="loading-row">
-                                        <td colspan="8">
-                                            <div class="loading">Loading downloads...</div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Bulk Operation Progress -->
-                        <div class="bulk-progress" id="bulkProgress" style="display: none;">
-                            <div class="progress-info">
-                                <span id="bulkProgressText">Processing...</span>
+                            
+                            <!-- Downloads Table -->
+                            <div class="cleanup-table-container">
+                                <table class="cleanup-table" id="cleanupTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="checkbox-column">
+                                                <input type="checkbox" id="headerSelectAll">
+                                            </th>
+                                            <th class="sortable" data-sort="video_id">Video ID</th>
+                                            <th class="sortable" data-sort="title">Title</th>
+                                            <th class="sortable" data-sort="users">Users</th>
+                                            <th class="sortable" data-sort="file_size">Size</th>
+                                            <th class="sortable" data-sort="extracted">Extracted</th>
+                                            <th class="sortable" data-sort="created_at">Created</th>
+                                            <th class="actions-column">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cleanupTableBody">
+                                        <tr class="loading-row">
+                                            <td colspan="8">
+                                                <div class="loading">Loading downloads...</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="bulkProgressFill"></div>
+                            
+                            <!-- Bulk Operation Progress -->
+                            <div class="bulk-progress" id="bulkProgress" style="display: none;">
+                                <div class="progress-info">
+                                    <span id="bulkProgressText">Processing...</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="bulkProgressFill"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1398,7 +1398,8 @@ def admin_get_all_downloads():
     try:
         from core.downloads_db import get_all_downloads_for_admin
         downloads = get_all_downloads_for_admin()
-        return jsonify({'downloads': downloads})
+        # Return downloads directly as an array for easier frontend handling
+        return jsonify(downloads)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1570,6 +1571,73 @@ def admin_bulk_delete_downloads():
         return jsonify({
             'success': True,
             'deleted_count': successful_deletions,
+            'total_count': len(download_ids),
+            'total_size_freed': total_freed,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/downloads/bulk-reset', methods=['POST'])
+@api_login_required
+def admin_bulk_reset_extractions():
+    """Bulk reset extraction status for multiple downloads."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        data = request.json
+        download_ids = data.get('download_ids', [])
+        
+        if not download_ids:
+            return jsonify({'error': 'No download IDs provided'}), 400
+        
+        from core.downloads_db import reset_extraction_status, get_all_downloads_for_admin
+        from core.file_cleanup import delete_extraction_files_only
+        
+        # Get all downloads info first
+        all_downloads = get_all_downloads_for_admin()
+        downloads_to_reset = {d['global_id']: d for d in all_downloads if d['global_id'] in download_ids}
+        
+        results = []
+        total_freed = 0
+        
+        for download_id in download_ids:
+            try:
+                download_info_dict = downloads_to_reset.get(download_id)
+                
+                # Reset extraction status in database
+                success, message, download_info = reset_extraction_status(download_id)
+                
+                file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
+                
+                # Delete extraction files (stems) but keep download files
+                cleanup_info = download_info or download_info_dict
+                if cleanup_info and cleanup_info.get('extracted'):
+                    file_success, file_message, file_cleanup_stats = delete_extraction_files_only(cleanup_info)
+                    total_freed += file_cleanup_stats['total_size_freed']
+                
+                results.append({
+                    'download_id': download_id,
+                    'success': success,
+                    'message': message,
+                    'file_cleanup': file_cleanup_stats
+                })
+                
+            except Exception as e:
+                results.append({
+                    'download_id': download_id,
+                    'success': False,
+                    'message': f'Error resetting download: {str(e)}',
+                    'file_cleanup': {'files_deleted': [], 'total_size_freed': 0, 'errors': [str(e)]}
+                })
+        
+        successful_resets = len([r for r in results if r['success']])
+        
+        return jsonify({
+            'success': True,
+            'reset_count': successful_resets,
             'total_count': len(download_ids),
             'total_size_freed': total_freed,
             'results': results

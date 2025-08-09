@@ -2646,3 +2646,464 @@ function getThumbnailUrl(item) {
     
     return '';
 }
+// ------------------------------------------------------------------
+// CLEANUP TAB FUNCTIONALITY
+// ------------------------------------------------------------------
+
+let cleanupData = [];
+let cleanupSortColumn = 'created_at';
+let cleanupSortDirection = 'desc';
+
+// Load cleanup data from API
+function loadCleanupData() {
+    const tableBody = document.getElementById('cleanupTableBody');
+    if (!tableBody) return;
+    
+    // Show loading
+    tableBody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="loading">Loading downloads...</div></td></tr>';
+    
+    fetch('/api/admin/cleanup/downloads', {
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Raw API response:', data);
+        
+        // Handle both direct array and wrapped object responses
+        if (Array.isArray(data)) {
+            cleanupData = data;
+        } else if (data && Array.isArray(data.downloads)) {
+            cleanupData = data.downloads;
+        } else if (data && data.error) {
+            throw new Error(data.error);
+        } else {
+            cleanupData = [];
+        }
+        
+        console.log('Processed cleanup data:', cleanupData.length, 'items');
+        renderCleanupTable();
+        initializeCleanupEventListeners();
+    })
+    .catch(error => {
+        console.error('Error loading cleanup data:', error);
+        tableBody.innerHTML = '<tr class="error-row"><td colspan="8"><div class="error-message">Failed to load downloads. Check console for details.</div></td></tr>';
+        showToast(`Failed to load cleanup data: ${error.message}`, 'error');
+        
+        // Log additional debugging info
+        console.error('Cleanup API Error Details:', {
+            error: error,
+            message: error.message,
+            stack: error.stack
+        });
+    });
+}
+
+// Render the cleanup table
+function renderCleanupTable() {
+    const tableBody = document.getElementById('cleanupTableBody');
+    if (!tableBody) return;
+    
+    // Ensure cleanupData is a valid array
+    if (!Array.isArray(cleanupData)) {
+        console.error('cleanupData is not an array:', cleanupData);
+        tableBody.innerHTML = '<tr class="error-row"><td colspan="8"><div class="error-message">Invalid data format</div></td></tr>';
+        return;
+    }
+    
+    // Sort data
+    const sortedData = [...cleanupData].sort((a, b) => {
+        let aVal = a[cleanupSortColumn];
+        let bVal = b[cleanupSortColumn];
+        
+        // Handle different data types
+        if (cleanupSortColumn === 'file_size') {
+            aVal = parseInt(aVal) || 0;
+            bVal = parseInt(bVal) || 0;
+        } else if (cleanupSortColumn === 'created_at') {
+            aVal = new Date(aVal);
+            bVal = new Date(bVal);
+        } else if (cleanupSortColumn === 'users') {
+            aVal = parseInt(aVal) || 0;
+            bVal = parseInt(bVal) || 0;
+        } else {
+            aVal = String(aVal || '').toLowerCase();
+            bVal = String(bVal || '').toLowerCase();
+        }
+        
+        if (cleanupSortDirection === 'asc') {
+            return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        } else {
+            return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        }
+    });
+    
+    if (sortedData.length === 0) {
+        tableBody.innerHTML = '<tr class="empty-row"><td colspan="8"><div class="empty-state">No downloads found</div></td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = '';
+    
+    sortedData.forEach(item => {
+        const row = createCleanupTableRow(item);
+        tableBody.appendChild(row);
+    });
+    
+    updateTableSortHeaders();
+}
+
+// Create a table row for cleanup data
+function createCleanupTableRow(item) {
+    const row = document.createElement('tr');
+    row.dataset.downloadId = item.global_id;
+    
+    // Add selection class if checked
+    if (document.querySelector(`#cleanup-checkbox-${item.global_id}`)?.checked) {
+        row.classList.add('selected');
+    }
+    
+    const extractedStatus = item.extracted ? 
+        `<span class="status-badge extracted">✓ Extracted</span>` : 
+        `<span class="status-badge not-extracted">⊘ Not Extracted</span>`;
+    
+    const fileSize = item.file_size ? formatFileSize(item.file_size) : 'N/A';
+    const createdAt = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A';
+    const userCount = item.user_count || 0;
+    
+    row.innerHTML = `
+        <td class="checkbox-column">
+            <input type="checkbox" id="cleanup-checkbox-${item.global_id}" value="${item.global_id}">
+        </td>
+        <td class="video-id-column">
+            <span class="video-id" title="${item.video_id}">${item.video_id}</span>
+        </td>
+        <td class="title-column">
+            <span class="title" title="${item.title || 'N/A'}">${truncateText(item.title || 'N/A', 50)}</span>
+        </td>
+        <td class="users-column">${userCount}</td>
+        <td class="size-column">${fileSize}</td>
+        <td class="extracted-column">${extractedStatus}</td>
+        <td class="date-column">${createdAt}</td>
+        <td class="actions-column">
+            <button class="row-action danger" onclick="deleteDownload(${item.global_id})" title="Delete Download">
+                <i class="fas fa-trash"></i>
+            </button>
+            ${item.extracted ? `
+                <button class="row-action warning" onclick="resetExtraction(${item.global_id})" title="Reset Extraction">
+                    <i class="fas fa-undo"></i>
+                </button>
+            ` : ''}
+        </td>
+    `;
+    
+    return row;
+}
+
+// Initialize cleanup event listeners
+function initializeCleanupEventListeners() {
+    // Bulk selection
+    const selectAllCheckbox = document.getElementById('selectAllDownloads');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', handleSelectAll);
+    }
+    
+    const headerSelectAll = document.getElementById('headerSelectAll');
+    if (headerSelectAll) {
+        headerSelectAll.addEventListener('change', handleSelectAll);
+    }
+    
+    // Individual checkboxes
+    document.querySelectorAll('#cleanupTableBody input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleRowSelection);
+    });
+    
+    // Bulk action buttons
+    const bulkDeleteButton = document.getElementById('bulkDeleteButton');
+    if (bulkDeleteButton) {
+        bulkDeleteButton.addEventListener('click', handleBulkDelete);
+    }
+    
+    const bulkResetButton = document.getElementById('bulkResetExtractionsButton');
+    if (bulkResetButton) {
+        bulkResetButton.addEventListener('click', handleBulkReset);
+    }
+    
+    const refreshButton = document.getElementById('refreshCleanupButton');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', loadCleanupData);
+    }
+    
+    // Table sorting
+    document.querySelectorAll('.cleanup-table th.sortable').forEach(header => {
+        header.addEventListener('click', handleTableSort);
+    });
+    
+    // Update button states
+    updateBulkButtonStates();
+}
+
+// Handle select all checkbox
+function handleSelectAll(event) {
+    const isChecked = event.target.checked;
+    
+    // Update all row checkboxes
+    document.querySelectorAll('#cleanupTableBody input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = isChecked;
+        const row = checkbox.closest('tr');
+        if (row) {
+            row.classList.toggle('selected', isChecked);
+        }
+    });
+    
+    // Sync both select all checkboxes
+    const selectAllMain = document.getElementById('selectAllDownloads');
+    const selectAllHeader = document.getElementById('headerSelectAll');
+    if (selectAllMain && selectAllHeader) {
+        selectAllMain.checked = isChecked;
+        selectAllHeader.checked = isChecked;
+    }
+    
+    updateBulkButtonStates();
+}
+
+// Handle individual row selection
+function handleRowSelection(event) {
+    const checkbox = event.target;
+    const row = checkbox.closest('tr');
+    
+    if (row) {
+        row.classList.toggle('selected', checkbox.checked);
+    }
+    
+    // Update select all checkbox states
+    const allCheckboxes = document.querySelectorAll('#cleanupTableBody input[type="checkbox"]');
+    const checkedCount = document.querySelectorAll('#cleanupTableBody input[type="checkbox"]:checked').length;
+    const allSelected = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+    
+    const selectAllMain = document.getElementById('selectAllDownloads');
+    const selectAllHeader = document.getElementById('headerSelectAll');
+    if (selectAllMain && selectAllHeader) {
+        selectAllMain.checked = allSelected;
+        selectAllHeader.checked = allSelected;
+    }
+    
+    updateBulkButtonStates();
+}
+
+// Update bulk button enabled/disabled states
+function updateBulkButtonStates() {
+    const selectedCheckboxes = document.querySelectorAll('#cleanupTableBody input[type="checkbox"]:checked');
+    const hasSelection = selectedCheckboxes.length > 0;
+    
+    const bulkDeleteButton = document.getElementById('bulkDeleteButton');
+    const bulkResetButton = document.getElementById('bulkResetExtractionsButton');
+    
+    if (bulkDeleteButton) {
+        bulkDeleteButton.disabled = !hasSelection;
+    }
+    
+    if (bulkResetButton) {
+        bulkResetButton.disabled = !hasSelection;
+    }
+}
+
+// Handle table sorting
+function handleTableSort(event) {
+    const header = event.target;
+    const newSortColumn = header.dataset.sort;
+    
+    if (cleanupSortColumn === newSortColumn) {
+        // Toggle direction if same column
+        cleanupSortDirection = cleanupSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default to desc for most fields
+        cleanupSortColumn = newSortColumn;
+        cleanupSortDirection = newSortColumn === 'title' ? 'asc' : 'desc';
+    }
+    
+    renderCleanupTable();
+}
+
+// Update table sort headers
+function updateTableSortHeaders() {
+    document.querySelectorAll('.cleanup-table th.sortable').forEach(header => {
+        header.classList.remove('sorted-asc', 'sorted-desc');
+        if (header.dataset.sort === cleanupSortColumn) {
+            header.classList.add(`sorted-${cleanupSortDirection}`);
+        }
+    });
+}
+
+// Handle bulk delete
+function handleBulkDelete() {
+    const selectedIds = Array.from(document.querySelectorAll('#cleanupTableBody input[type="checkbox"]:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No downloads selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to permanently delete ${selectedIds.length} download(s)? This will remove all files and cannot be undone.`)) {
+        return;
+    }
+    
+    performBulkOperation('/api/admin/cleanup/downloads/bulk-delete', selectedIds, 'Deleting');
+}
+
+// Handle bulk reset
+function handleBulkReset() {
+    const selectedIds = Array.from(document.querySelectorAll('#cleanupTableBody input[type="checkbox"]:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No downloads selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to reset extraction status for ${selectedIds.length} download(s)? This will remove stems files but keep the original downloads.`)) {
+        return;
+    }
+    
+    performBulkOperation('/api/admin/cleanup/downloads/bulk-reset', selectedIds, 'Resetting');
+}
+
+// Perform bulk operation with progress tracking
+function performBulkOperation(endpoint, downloadIds, operationName) {
+    const progressDiv = document.getElementById('bulkProgress');
+    const progressText = document.getElementById('bulkProgressText');
+    const progressFill = document.getElementById('bulkProgressFill');
+    
+    // Show progress
+    if (progressDiv) {
+        progressDiv.style.display = 'block';
+        progressText.textContent = `${operationName} ${downloadIds.length} item(s)...`;
+        progressFill.style.width = '0%';
+    }
+    
+    // Disable buttons during operation
+    document.getElementById('bulkDeleteButton').disabled = true;
+    document.getElementById('bulkResetExtractionsButton').disabled = true;
+    document.getElementById('refreshCleanupButton').disabled = true;
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+        },
+        body: JSON.stringify({ download_ids: downloadIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const successCount = data.deleted_count || data.reset_count || 0;
+            const totalSize = data.total_size_freed || 0;
+            
+            let message = `${operationName} completed: ${successCount}/${data.total_count} items processed`;
+            if (totalSize > 0) {
+                message += `, ${formatFileSize(totalSize)} freed`;
+            }
+            
+            showToast(message, 'success');
+            
+            // Animate progress to 100%
+            if (progressFill) {
+                progressFill.style.width = '100%';
+            }
+            
+            // Reload data after a short delay
+            setTimeout(() => {
+                loadCleanupData();
+                if (progressDiv) {
+                    progressDiv.style.display = 'none';
+                }
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Operation failed');
+        }
+    })
+    .catch(error => {
+        console.error(`Error in bulk ${operationName.toLowerCase()}:`, error);
+        showToast(`Error: ${error.message}`, 'error');
+        
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+        
+        // Re-enable buttons
+        document.getElementById('bulkDeleteButton').disabled = false;
+        document.getElementById('bulkResetExtractionsButton').disabled = false;
+        document.getElementById('refreshCleanupButton').disabled = false;
+        
+        updateBulkButtonStates();
+    });
+}
+
+// Delete single download
+function deleteDownload(downloadId) {
+    if (!confirm('Are you sure you want to permanently delete this download? This cannot be undone.')) {
+        return;
+    }
+    
+    fetch(`/api/admin/cleanup/downloads/${downloadId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Download deleted successfully', 'success');
+            loadCleanupData(); // Refresh table
+        } else {
+            throw new Error(data.error || 'Delete failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting download:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Reset single extraction
+function resetExtraction(downloadId) {
+    if (!confirm('Are you sure you want to reset the extraction status? This will remove stems files but keep the download.')) {
+        return;
+    }
+    
+    fetch(`/api/admin/cleanup/downloads/${downloadId}/reset-extraction`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Extraction status reset successfully', 'success');
+            loadCleanupData(); // Refresh table
+        } else {
+            throw new Error(data.error || 'Reset failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error resetting extraction:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Utility function to truncate text
+function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
