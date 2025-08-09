@@ -2050,6 +2050,207 @@ def serve_extracted_stem(extraction_id, stem_name):
         return jsonify({'error': f'Error serving stem file: {str(e)}'}), 500
 
 # ------------------------------------------------------------------
+# Library API Endpoints
+# ------------------------------------------------------------------
+
+@app.route('/api/library', methods=['GET'])
+@api_login_required
+def get_library():
+    """Get all global downloads/extractions available to users."""
+    try:
+        filter_type = request.args.get('filter', 'all')  # 'all', 'downloads', 'extractions'
+        search_query = request.args.get('search', '').strip()
+        
+        # Get all global downloads
+        import sqlite3
+        from pathlib import Path
+        DB_PATH = Path("stemtubes.db")
+        
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Base query for global downloads with user access information
+            base_query = """
+                SELECT 
+                    gd.*,
+                    COUNT(DISTINCT ud.user_id) as user_count,
+                    CASE WHEN user_access.user_id IS NOT NULL THEN 1 ELSE 0 END as user_has_access,
+                    user_access.file_path as user_file_path,
+                    user_access.extracted as user_extracted
+                FROM global_downloads gd
+                LEFT JOIN user_downloads ud ON gd.id = ud.global_download_id
+                LEFT JOIN user_downloads user_access ON gd.id = user_access.global_download_id 
+                    AND user_access.user_id = ?
+            """
+            
+            # Add search filter
+            where_conditions = []
+            params = [current_user.id]
+            
+            if search_query:
+                where_conditions.append("(gd.title LIKE ? OR gd.video_id LIKE ?)")
+                search_param = f"%{search_query}%"
+                params.extend([search_param, search_param])
+            
+            # Add filter conditions
+            if filter_type == 'downloads':
+                where_conditions.append("gd.file_path IS NOT NULL")
+            elif filter_type == 'extractions':
+                where_conditions.append("gd.extracted = 1")
+            
+            if where_conditions:
+                base_query += " WHERE " + " AND ".join(where_conditions)
+            
+            base_query += """
+                GROUP BY gd.id
+                ORDER BY gd.created_at DESC
+            """
+            
+            cursor.execute(base_query, params)
+            library_items = cursor.fetchall()
+            
+            # Format results
+            formatted_items = []
+            for item in library_items:
+                # Determine what's available
+                has_download = bool(item['file_path'])
+                has_extraction = bool(item['extracted'])
+                
+                # Determine user's current access
+                user_has_download_access = bool(item['user_has_access'] and item['user_file_path'])
+                user_has_extraction_access = bool(item['user_has_access'] and item['user_extracted'])
+                
+                # Calculate file size if available
+                file_size = None
+                if item['file_path'] and os.path.exists(item['file_path']):
+                    try:
+                        file_size = os.path.getsize(item['file_path'])
+                    except:
+                        pass
+                
+                formatted_item = {
+                    'id': item['id'],
+                    'video_id': item['video_id'],
+                    'title': item['title'],
+                    'thumbnail': item['thumbnail'],
+                    'media_type': item['media_type'],
+                    'quality': item['quality'],
+                    'created_at': item['created_at'],
+                    'user_count': item['user_count'],
+                    'file_size': file_size,
+                    
+                    # Availability flags
+                    'has_download': has_download,
+                    'has_extraction': has_extraction,
+                    
+                    # User access flags
+                    'user_has_download_access': user_has_download_access,
+                    'user_has_extraction_access': user_has_extraction_access,
+                    
+                    # Action availability
+                    'can_add_download': has_download and not user_has_download_access,
+                    'can_add_extraction': has_extraction and not user_has_extraction_access,
+                    
+                    # Badge type for display
+                    'badge_type': 'both' if (has_download and has_extraction) else ('download' if has_download else 'extraction')
+                }
+                
+                formatted_items.append(formatted_item)
+            
+            return jsonify({
+                'success': True,
+                'items': formatted_items,
+                'total_count': len(formatted_items),
+                'filter': filter_type,
+                'search': search_query
+            })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/library/<int:global_download_id>/add-download', methods=['POST'])
+@api_login_required
+def add_library_download_to_user(global_download_id):
+    """Add a download from library to user's personal downloads list."""
+    try:
+        # Get the global download record
+        import sqlite3
+        from pathlib import Path
+        DB_PATH = Path("stemtubes.db")
+        
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM global_downloads WHERE id = ?", (global_download_id,))
+            global_download = cursor.fetchone()
+            
+            if not global_download:
+                return jsonify({'error': 'Download not found in library'}), 404
+            
+            # Convert to dict for use with existing functions
+            global_download = dict(global_download)
+        
+        # Check if user already has access to this download
+        existing_downloads = db_list_downloads(current_user.id)
+        for existing in existing_downloads:
+            if existing['global_download_id'] == global_download_id and existing['file_path']:
+                return jsonify({'error': 'You already have access to this download'}), 400
+        
+        # Add user access to the download
+        db_add_user_access(current_user.id, global_download)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Added "{global_download["title"]}" to your downloads'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/library/<int:global_download_id>/add-extraction', methods=['POST'])
+@api_login_required
+def add_library_extraction_to_user(global_download_id):
+    """Add an extraction from library to user's personal extractions list."""
+    try:
+        # Get the global download record
+        import sqlite3
+        from pathlib import Path
+        DB_PATH = Path("stemtubes.db")
+        
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM global_downloads WHERE id = ?", (global_download_id,))
+            global_download = cursor.fetchone()
+            
+            if not global_download:
+                return jsonify({'error': 'Extraction not found in library'}), 404
+            
+            # Convert to dict for use with existing functions
+            global_download = dict(global_download)
+        
+        if not global_download['extracted']:
+            return jsonify({'error': 'This item has not been extracted yet'}), 400
+        
+        # Check if user already has access to this extraction
+        user_extractions = db_list_extractions(current_user.id)
+        for existing in user_extractions:
+            if existing['global_download_id'] == global_download_id:
+                return jsonify({'error': 'You already have access to this extraction'}), 400
+        
+        # Add user access to the extraction
+        db_add_user_extraction_access(current_user.id, global_download)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Added extraction of "{global_download["title"]}" to your list'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ------------------------------------------------------------------
 # Run
 # ------------------------------------------------------------------
 if __name__ == '__main__':

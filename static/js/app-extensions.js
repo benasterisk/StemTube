@@ -87,6 +87,8 @@ function switchToTab(tabId) {
         loadExtractions(); // Refresh extractions list
     } else if (tabId === 'downloads') {
         loadDownloads(); // Refresh downloads list
+    } else if (tabId === 'library') {
+        loadLibrary(); // Load library content
     } else if (tabId === 'admin') {
         // Initialize admin section to users by default
         setTimeout(() => switchAdminSection('users'), 100);

@@ -111,6 +111,7 @@
                     {% endif %}
                     <button class="tab-button" data-tab="downloads">Downloads</button>
                     <button class="tab-button" data-tab="extractions">Extractions</button>
+                    <button class="tab-button" data-tab="library">Library</button>
                     <button class="tab-button" data-tab="mixer">Mixer</button>
                 </div>
                 
@@ -219,6 +220,32 @@
                     </div>
                     <div class="extractions-container" id="extractionsContainer">
                         <!-- Extractions will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="libraryTab">
+                    <h2>Library</h2>
+                    <div class="library-controls">
+                        <div class="filter-controls">
+                            <div class="filter-group">
+                                <label>Show:</label>
+                                <div class="filter-buttons">
+                                    <button class="filter-button active" data-filter="all">All</button>
+                                    <button class="filter-button" data-filter="downloads">Downloads</button>
+                                    <button class="filter-button" data-filter="extractions">Extractions</button>
+                                </div>
+                            </div>
+                            <div class="search-group">
+                                <input type="text" id="librarySearchInput" placeholder="Search library...">
+                                <button id="librarySearchButton"><i class="fas fa-search"></i></button>
+                            </div>
+                        </div>
+                        <div class="library-stats">
+                            <span id="libraryItemCount">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="library-container" id="libraryContainer">
+                        <!-- Library items will be dynamically added here -->
                     </div>
                 </div>
                 

@@ -3457,3 +3457,270 @@ if (document.readyState === 'loading') {
 } else {
     initializeUserManagement();
 }
+
+// ============ LIBRARY TAB FUNCTIONS ============
+
+let currentLibraryFilter = 'all';
+let currentLibrarySearch = '';
+
+// Load library content
+function loadLibrary(filter = currentLibraryFilter, search = currentLibrarySearch) {
+    const libraryContainer = document.getElementById('libraryContainer');
+    if (!libraryContainer) return;
+    
+    // Show loading state
+    libraryContainer.innerHTML = '<div class="library-loading"><i class="fas fa-spinner fa-spin"></i> Loading library...</div>';
+    
+    // Update current filter and search
+    currentLibraryFilter = filter;
+    currentLibrarySearch = search;
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (filter !== 'all') params.append('filter', filter);
+    if (search.trim()) params.append('search', search.trim());
+    
+    fetch(`/api/library?${params.toString()}`, {
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayLibraryItems(data.items);
+            updateLibraryStats(data.total_count, data.filter, data.search);
+        } else {
+            libraryContainer.innerHTML = `<div class="library-loading">Error: ${data.error}</div>`;
+            showToast(`Error loading library: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading library:', error);
+        libraryContainer.innerHTML = '<div class="library-loading">Error loading library</div>';
+        showToast('Error loading library', 'error');
+    });
+}
+
+// Display library items
+function displayLibraryItems(items) {
+    const libraryContainer = document.getElementById('libraryContainer');
+    
+    if (items.length === 0) {
+        libraryContainer.innerHTML = '<div class="library-loading">No items found in library</div>';
+        return;
+    }
+    
+    libraryContainer.innerHTML = '';
+    
+    items.forEach(item => {
+        const libraryItem = createLibraryItem(item);
+        libraryContainer.appendChild(libraryItem);
+    });
+}
+
+// Create library item element
+function createLibraryItem(item) {
+    const itemElement = document.createElement('div');
+    itemElement.className = 'library-item';
+    itemElement.id = `library-item-${item.id}`;
+    
+    // Format file size
+    const fileSize = item.file_size ? formatFileSize(item.file_size) : 'Unknown';
+    
+    // Format creation date
+    const createdDate = new Date(item.created_at).toLocaleDateString();
+    
+    // Determine badge class and text
+    let badgeClass = item.badge_type;
+    let badgeText = item.badge_type === 'both' ? 'Download & Extract' : 
+                   item.badge_type === 'download' ? 'Download' : 'Extract';
+    
+    itemElement.innerHTML = `
+        <div class="library-item-header">
+            <div class="library-item-info">
+                <div class="library-item-title">${item.title}</div>
+                <div class="library-item-meta">
+                    <span>Video ID: ${item.video_id}</span>
+                    <span>Users: ${item.user_count}</span>
+                    <span>Size: ${fileSize}</span>
+                    <span>Created: ${createdDate}</span>
+                </div>
+            </div>
+            <div class="library-item-badges">
+                <span class="library-badge ${badgeClass}">${badgeText}</span>
+            </div>
+        </div>
+        <div class="library-item-actions">
+            ${item.can_add_download ? `
+                <button class="library-action-button" data-action="add-download" data-id="${item.id}">
+                    <i class="fas fa-plus"></i> Add Download
+                </button>
+            ` : ''}
+            ${item.can_add_extraction ? `
+                <button class="library-action-button" data-action="add-extraction" data-id="${item.id}">
+                    <i class="fas fa-plus"></i> Add Extraction
+                </button>
+            ` : ''}
+            ${!item.can_add_download && !item.can_add_extraction ? `
+                <span class="library-action-button secondary" disabled>
+                    <i class="fas fa-check"></i> Already in your list
+                </span>
+            ` : ''}
+        </div>
+    `;
+    
+    // Add event listeners for action buttons
+    itemElement.querySelectorAll('.library-action-button[data-action]').forEach(button => {
+        button.addEventListener('click', () => {
+            const action = button.dataset.action;
+            const id = button.dataset.id;
+            
+            if (action === 'add-download') {
+                addLibraryDownload(id, button);
+            } else if (action === 'add-extraction') {
+                addLibraryExtraction(id, button);
+            }
+        });
+    });
+    
+    return itemElement;
+}
+
+// Add download from library to user's list
+function addLibraryDownload(globalDownloadId, button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    button.disabled = true;
+    
+    fetch(`/api/library/${globalDownloadId}/add-download`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            button.innerHTML = '<i class="fas fa-check"></i> Added to Downloads';
+            button.classList.add('secondary');
+            button.disabled = true;
+            
+            // Refresh downloads tab if it's loaded
+            if (typeof loadDownloads === 'function') {
+                loadDownloads();
+            }
+        } else {
+            showToast(`Error: ${data.error}`, 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error adding download:', error);
+        showToast('Error adding download from library', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// Add extraction from library to user's list
+function addLibraryExtraction(globalDownloadId, button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    button.disabled = true;
+    
+    fetch(`/api/library/${globalDownloadId}/add-extraction`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-Token': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            button.innerHTML = '<i class="fas fa-check"></i> Added to Extractions';
+            button.classList.add('secondary');
+            button.disabled = true;
+            
+            // Refresh extractions tab if it's loaded
+            if (typeof loadExtractions === 'function') {
+                loadExtractions();
+            }
+        } else {
+            showToast(`Error: ${data.error}`, 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error adding extraction:', error);
+        showToast('Error adding extraction from library', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// Update library stats display
+function updateLibraryStats(totalCount, filter, search) {
+    const statsElement = document.getElementById('libraryItemCount');
+    if (!statsElement) return;
+    
+    let filterText = '';
+    if (filter === 'downloads') filterText = ' downloads';
+    else if (filter === 'extractions') filterText = ' extractions';
+    else filterText = ' items';
+    
+    let searchText = search ? ` matching "${search}"` : '';
+    
+    statsElement.textContent = `${totalCount}${filterText}${searchText}`;
+}
+
+// Format file size for display
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Initialize library tab event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Filter buttons
+    document.querySelectorAll('.filter-button').forEach(button => {
+        button.addEventListener('click', () => {
+            // Update active filter button
+            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Load library with new filter
+            const filter = button.dataset.filter;
+            loadLibrary(filter, currentLibrarySearch);
+        });
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('librarySearchInput');
+    const searchButton = document.getElementById('librarySearchButton');
+    
+    if (searchButton) {
+        searchButton.addEventListener('click', () => {
+            const searchQuery = searchInput ? searchInput.value : '';
+            loadLibrary(currentLibraryFilter, searchQuery);
+        });
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const searchQuery = searchInput.value;
+                loadLibrary(currentLibraryFilter, searchQuery);
+            }
+        });
+    }
+});
