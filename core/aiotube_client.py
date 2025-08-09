@@ -140,6 +140,9 @@ class AiotubeClient:
             # Add video details for each result
             for video_id in search_results:
                 try:
+                    # DEBUG: Log each video_id from search results
+                    print(f"[AIOTUBE DEBUG] Processing video_id: '{video_id}' (length: {len(video_id)})")
+                    
                     video = aiotube.Video(video_id)
                     metadata = video.metadata
                     
@@ -194,6 +197,9 @@ class AiotubeClient:
                         if minutes > 0 or hours > 0:  # Inclure M même si 0 quand il y a des heures
                             duration += f"{minutes}M"
                         duration += f"{seconds}S"
+                    
+                    # DEBUG: Log the video_id being returned
+                    print(f"[AIOTUBE DEBUG] Returning video_id: '{video_id}' with title: '{metadata.get('title', '')[:50]}...'")
                     
                     # Create a structure similar to YouTube API response
                     item = {

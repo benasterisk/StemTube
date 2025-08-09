@@ -102,6 +102,10 @@ def add_or_update(user_id, meta):
         quality = meta["quality"]
         file_path = meta["file_path"]
         
+        # DEBUG: Log the video_id being stored in database
+        print(f"[DB DEBUG] add_or_update called with video_id: '{video_id}' (length: {len(video_id)})")
+        print(f"[DB DEBUG] Full meta: {meta}")
+        
         # First, check if this file already exists globally
         cursor = conn.cursor()
         cursor.execute("""

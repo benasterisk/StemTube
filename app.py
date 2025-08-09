@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import shutil
+import re
 from datetime import datetime
 from functools import wraps
 
@@ -64,6 +65,24 @@ from core.downloads_db import (
     clear_extraction_in_progress as db_clear_extraction_in_progress,
     cleanup_stuck_extractions
 )
+
+# ------------------------------------------------------------------
+# Utility Functions
+# ------------------------------------------------------------------
+def is_valid_youtube_video_id(video_id):
+    """Validate a YouTube video ID."""
+    if not video_id or not isinstance(video_id, str):
+        return False
+    
+    # YouTube video IDs are exactly 11 characters
+    if len(video_id) != 11:
+        return False
+    
+    # Only alphanumeric, hyphen, and underscore are allowed
+    if not re.match(r'^[a-zA-Z0-9_-]{11}$', video_id):
+        return False
+    
+    return True
 
 # ------------------------------------------------------------------
 # Bootstrap
@@ -179,27 +198,33 @@ class UserSessionManager:
 
     def _emit_complete_with_room(self, item_id, title=None, file_path=None, room_key=None, user_id=None):
         if title:  # download finished
-            # Extract video_id from download_id as a reliable fallback (format: "video_id_timestamp")
-            video_id = item_id.split('_')[0] if '_' in item_id else None
+            video_id = None
+            download_item = None
             
-            # Try to get video_id from download manager for verification
+            # Get video_id directly from download manager - this is the reliable source!
             if user_id:
                 dm = self.get_download_manager()
-                download_item = None
                 
                 # Find the download item in the manager
                 for status in ['active', 'completed', 'failed']:
                     for item in dm.get_all_downloads().get(status, []):
                         if item.download_id == item_id:
                             download_item = item
-                            # Use the actual video_id from the item if found, otherwise keep the extracted one
-                            if item.video_id:
-                                video_id = item.video_id
+                            video_id = item.video_id  # Use the original video_id directly!
                             break
                     if download_item:
                         break
+            
+            # Fallback only if we couldn't find the item (shouldn't happen)
+            if not video_id:
+                print(f"[WARNING] Could not find video_id for download {item_id}, using fallback extraction")
+                if '_' in item_id:
+                    parts = item_id.split('_')
+                    video_id = '_'.join(parts[:-1])
+                else:
+                    video_id = item_id
                 
-                print(f"[DEBUG] Download completion: item_id={item_id}, found_in_manager={download_item is not None}, video_id={video_id}")
+            print(f"[DEBUG] Download completion: item_id={item_id}, found_in_manager={download_item is not None}, video_id={video_id}")
             
             # Include video_id in the WebSocket event for frontend deduplication
             socketio.emit('download_complete', {
@@ -238,8 +263,17 @@ class UserSessionManager:
                     except:
                         file_size = 0
                         
+                # Extract video_id properly from item_id (remove only the timestamp)
+                if '_' in item_id:
+                    parts = item_id.split('_')
+                    fallback_video_id = '_'.join(parts[:-1])  # Remove only timestamp
+                else:
+                    fallback_video_id = item_id
+                    
+                print(f"[DEBUG] Fallback db save: item_id={item_id}, extracted video_id={fallback_video_id}")
+                
                 db_add_download(user_id, {
-                    "video_id": item_id.split('_')[0],  # Try to extract from item_id
+                    "video_id": fallback_video_id,
                     "title": title,
                     "thumbnail_url": "",
                     "file_path": file_path,
@@ -269,11 +303,38 @@ class UserSessionManager:
     def _emit_extraction_complete_with_room(self, item_id, title=None, video_id=None, room_key=None, user_id=None, item=None):
         """Handle extraction completion - always emits extraction_complete event."""
         print(f"[CALLBACK DEBUG] Extraction finished: item_id={item_id}, title={title}, video_id={video_id}, user_id={user_id}")
+        
+        # Send to the specific user who initiated the extraction
         socketio.emit('extraction_complete', {
             'extraction_id': item_id,
             'video_id': video_id,
             'title': title
         }, room=room_key or self._key())
+        
+        # BROADCAST to ALL connected clients (no room restriction)
+        print(f"[CALLBACK DEBUG] Broadcasting extraction completion to ALL connected clients")
+        try:
+            # Use broadcast=True to send to ALL connected clients regardless of rooms
+            socketio.emit('extraction_completed_global', {
+                'extraction_id': item_id,
+                'video_id': video_id,
+                'title': title
+            }, broadcast=True)
+            print(f"[CALLBACK DEBUG] Global broadcast sent with broadcast=True")
+        except Exception as e:
+            print(f"[CALLBACK DEBUG] Error sending global broadcast: {e}")
+            
+        # Alternative approach: try sending without any room parameter
+        try:
+            socketio.emit('extraction_refresh_needed', {
+                'extraction_id': item_id,
+                'video_id': video_id,
+                'title': title,
+                'message': 'New extraction available - please refresh'
+            })
+            print(f"[CALLBACK DEBUG] Alternative global event sent")
+        except Exception as e:
+            print(f"[CALLBACK DEBUG] Error sending alternative event: {e}")
         
         # Persist completed extraction to downloads database
         if user_id and video_id and item:
@@ -665,6 +726,17 @@ def add_download():
 
     try:
         video_id = data['video_id']
+        
+        # DEBUG: Log the received video_id
+        print(f"[API DEBUG] Received video_id: '{video_id}' (length: {len(video_id)})")
+        print(f"[API DEBUG] Request data: {data}")
+        
+        # VALIDATE VIDEO ID
+        if not is_valid_youtube_video_id(video_id):
+            error_msg = f'Invalid YouTube video ID: "{video_id}" (length: {len(video_id)}). YouTube video IDs must be exactly 11 characters long.'
+            print(f"[API DEBUG] REJECTED: {error_msg}")
+            return jsonify({'error': error_msg}), 400
+        
         download_type = DownloadType.AUDIO if str(data['download_type']).lower() == 'audio' else DownloadType.VIDEO
         quality = data['quality']
         

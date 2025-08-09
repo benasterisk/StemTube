@@ -8,6 +8,42 @@ let socket;
 let currentVideoId = null;
 let currentExtractionItem = null;
 let appConfig = {};
+
+// Extraction polling for concurrent user scenarios
+let waitingForExtraction = false;
+let extractionPollInterval = null;
+
+// Function to start polling when user gets "extraction in progress by another user" message
+function startExtractionPolling() {
+    if (waitingForExtraction) return; // Already polling
+    
+    waitingForExtraction = true;
+    console.log('[EXTRACTION POLL] Starting periodic refresh while waiting for another user\'s extraction to complete');
+    
+    // Poll every 10 seconds while waiting
+    extractionPollInterval = setInterval(() => {
+        console.log('[EXTRACTION POLL] Refreshing extraction list...');
+        loadExtractions();
+    }, 10000); // 10 seconds
+    
+    // Stop polling after 5 minutes max (extraction should be done by then)
+    setTimeout(() => {
+        stopExtractionPolling();
+        console.log('[EXTRACTION POLL] Stopped polling after 5 minute timeout');
+    }, 300000); // 5 minutes
+}
+
+// Function to stop polling 
+function stopExtractionPolling() {
+    if (!waitingForExtraction) return;
+    
+    waitingForExtraction = false;
+    if (extractionPollInterval) {
+        clearInterval(extractionPollInterval);
+        extractionPollInterval = null;
+        console.log('[EXTRACTION POLL] Stopped periodic refresh');
+    }
+}
 let searchResults = [];
 let searchResultsPage = 1;
 let searchResultsPerPage = 10;
@@ -35,6 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load existing downloads and extractions
     loadDownloads();
     loadExtractions();
+});
+
+// Cleanup polling on page unload
+window.addEventListener('beforeunload', () => {
+    stopExtractionPolling();
 });
 
 // Socket.IO Initialization
@@ -99,6 +140,54 @@ function initializeSocketIO() {
     socket.on('extraction_complete', (data) => {
         console.log('Extraction complete:', data);
         updateExtractionComplete(data);
+    });
+    
+    // Handle global extraction completion notifications
+    // This refreshes extraction lists for all users when ANY user completes an extraction
+    socket.on('extraction_completed_global', (data) => {
+        console.log('[FRONTEND DEBUG] Global extraction completed event received:', data);
+        console.log('[FRONTEND DEBUG] Current user should refresh extraction lists');
+        
+        try {
+            // Refresh the extractions list to show the new extraction
+            console.log('[FRONTEND DEBUG] Calling loadExtractions()');
+            loadExtractions();
+            
+            // Also refresh downloads list to update "Extract Stems" buttons
+            console.log('[FRONTEND DEBUG] Calling loadDownloads()');
+            loadDownloads();
+            
+            // Show a subtle notification
+            console.log('[FRONTEND DEBUG] Showing toast notification');
+            showToast(`New extraction available: ${data.title}`, 'info');
+            
+            console.log('[FRONTEND DEBUG] Global extraction refresh completed successfully');
+        } catch (error) {
+            console.error('[FRONTEND DEBUG] Error handling global extraction completion:', error);
+        }
+    });
+    
+    // Alternative global extraction refresh event handler
+    socket.on('extraction_refresh_needed', (data) => {
+        console.log('[FRONTEND DEBUG] Extraction refresh needed event received:', data);
+        console.log('[FRONTEND DEBUG] This is the backup global broadcast method');
+        
+        try {
+            // Refresh the extractions list to show the new extraction  
+            console.log('[FRONTEND DEBUG] Calling loadExtractions() from backup handler');
+            loadExtractions();
+            
+            // Also refresh downloads list
+            console.log('[FRONTEND DEBUG] Calling loadDownloads() from backup handler');
+            loadDownloads();
+            
+            // Show notification
+            showToast(data.message || `New extraction available: ${data.title}`, 'success');
+            
+            console.log('[FRONTEND DEBUG] Backup extraction refresh completed');
+        } catch (error) {
+            console.error('[FRONTEND DEBUG] Error in backup extraction refresh:', error);
+        }
     });
     
     socket.on('extraction_error', (data) => {
@@ -479,6 +568,13 @@ function formatDuration(duration) {
 function openDownloadModal(videoId, title, thumbnailUrl) {
     console.log('Opening download modal with:', { videoId, title, thumbnailUrl });
     
+    // Validate video ID before proceeding
+    if (!isValidYouTubeVideoId(videoId)) {
+        showToast(`Invalid YouTube video ID: "${videoId}" (length: ${videoId ? videoId.length : 0})`, 'error');
+        console.error('Invalid video ID provided to download modal:', videoId);
+        return;
+    }
+    
     // Stocker l'ID décodé
     currentVideoId = videoId;
     console.log('Set currentVideoId to:', currentVideoId);
@@ -522,6 +618,10 @@ function startDownload() {
     });
     
     // Create download item
+    // DEBUG: Log the video_id being sent to API
+    console.log(`[FRONTEND DEBUG] Sending video_id: '${currentVideoId}' (length: ${currentVideoId.length})`);
+    console.log(`[FRONTEND DEBUG] Title: '${title}'`);
+    
     const downloadItem = {
         video_id: currentVideoId,
         title: title,
@@ -773,6 +873,14 @@ function startExtraction() {
             return;
         }
         
+        // Check if extraction is in progress by another user
+        if (data.in_progress && data.extraction_id === 'in_progress') {
+            console.log('[EXTRACTION POLL] Detected extraction in progress by another user, starting polling...');
+            showToast(data.message || 'Extraction in progress by another user. Will auto-refresh when complete.', 'warning');
+            startExtractionPolling();
+            return;
+        }
+        
         // Close modal first
         document.getElementById('extractionModal').style.display = 'none';
         
@@ -883,6 +991,13 @@ function loadExtractions() {
             if (data.length === 0) {
                 extractionsContainer.innerHTML = '<div class="empty-state">No extractions yet</div>';
                 return;
+            }
+            
+            // If we were polling for extraction completion and now we have extractions, stop polling
+            if (waitingForExtraction && data.length > 0) {
+                console.log('[EXTRACTION POLL] Found extractions, stopping polling');
+                stopExtractionPolling();
+                showToast('Extraction completed! List refreshed automatically.', 'success');
             }
             
             // Sort extractions by creation time (newest first)
@@ -2360,6 +2475,25 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// Helper function to validate YouTube video ID
+function isValidYouTubeVideoId(videoId) {
+    if (!videoId || typeof videoId !== 'string') {
+        return false;
+    }
+    
+    // YouTube video IDs are exactly 11 characters
+    if (videoId.length !== 11) {
+        return false;
+    }
+    
+    // Only alphanumeric, hyphen, and underscore are allowed
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+        return false;
+    }
+    
+    return true;
+}
+
 // Helper function to extract video ID from YouTube URL
 function extractVideoId(url) {
     // Check if it's already a video ID (11 characters)
@@ -2371,7 +2505,13 @@ function extractVideoId(url) {
     const regExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     
-    return (match && match[2].length === 11) ? match[2] : null;
+    if (match && match[2]) {
+        // Validate the extracted video ID
+        const extractedId = match[2];
+        return isValidYouTubeVideoId(extractedId) ? extractedId : null;
+    }
+    
+    return null;
 }
 
 // Display search results
@@ -2424,7 +2564,14 @@ function displaySearchResults(data) {
             videoId = item.videoId || '';
         }
         
-        console.log(`Extracted videoId: ${videoId}`);
+        // VALIDATE VIDEO ID
+        if (!isValidYouTubeVideoId(videoId)) {
+            console.warn(`[FRONTEND DEBUG] Invalid video ID found: '${videoId}' (length: ${videoId ? videoId.length : 0}) - skipping result`);
+            console.warn(`[FRONTEND DEBUG] Item data:`, item);
+            return; // Skip this invalid result
+        }
+        
+        console.log(`[FRONTEND DEBUG] Extracted valid videoId: ${videoId} for title: ${item.snippet?.title || item.title || 'Unknown'}`);
         
         // Extract other information
         const title = item.snippet?.title || item.title || 'Unknown Title';
