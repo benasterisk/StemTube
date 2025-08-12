@@ -1570,6 +1570,10 @@ function updateDownloadComplete(data) {
     statusElement.textContent = 'Completed';
     statusElement.className = 'item-status status-completed';
     
+    // Get the global_download_id from the existing checkbox
+    const existingCheckbox = downloadElement.querySelector('.user-item-checkbox');
+    const globalDownloadId = existingCheckbox ? existingCheckbox.dataset.downloadId : '';
+    
     actionsContainer.innerHTML = `
         <button class="item-button extract-button" data-download-id="${data.download_id}" data-title="${data.title}" data-file-path="${data.file_path}" data-video-id="${data.video_id}">
             <i class="fas fa-music"></i> Extract Stems
@@ -1577,7 +1581,7 @@ function updateDownloadComplete(data) {
         <button class="item-button open-folder-button" data-file-path="${data.file_path}">
             <i class="fas fa-download"></i> Get File
         </button>
-        <button class="item-button remove-from-list" data-download-id="${data.global_download_id}" title="Remove from my list">
+        <button class="item-button remove-from-list" data-download-id="${globalDownloadId}" title="Remove from my list">
             <i class="fas fa-eye-slash"></i> Remove from List
         </button>
     `;
@@ -1647,7 +1651,7 @@ function updateDownloadComplete(data) {
     const removeFromListButton = actionsContainer.querySelector('.remove-from-list');
     if (removeFromListButton) {
         removeFromListButton.addEventListener('click', () => {
-            removeFromDownloadList(removeFromListButton.dataset.downloadId);
+            removeDownloadFromList(removeFromListButton.dataset.downloadId);
         });
     }
 }
