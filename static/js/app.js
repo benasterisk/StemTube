@@ -3202,10 +3202,16 @@ function removeDownloadFromList(downloadId) {
     .then(data => {
         if (data.success) {
             showToast(data.message, 'success');
-            // Remove the element from DOM
-            const downloadElement = document.getElementById(`download-${downloadId}`);
+            // Remove the element from DOM - find by global_download_id in checkbox
+            const downloadElement = document.querySelector(`[data-download-id="${downloadId}"]`)?.closest('.download-item');
             if (downloadElement) {
                 downloadElement.remove();
+            } else {
+                // Fallback: try to find by constructed ID (for backward compatibility)
+                const fallbackElement = document.getElementById(`download-${downloadId}`);
+                if (fallbackElement) {
+                    fallbackElement.remove();
+                }
             }
             // Update management controls visibility
             updateUserManagementControls();
