@@ -1575,10 +1575,9 @@ function updateDownloadComplete(data) {
     statusElement.textContent = 'Completed';
     statusElement.className = 'item-status status-completed';
     
-    // Get the global_download_id from the existing checkbox
-    const existingCheckbox = downloadElement.querySelector('.user-item-checkbox');
-    const globalDownloadId = existingCheckbox ? existingCheckbox.dataset.downloadId : '';
-    console.log('🔍 [DEBUG] Extracted globalDownloadId:', globalDownloadId, 'from checkbox:', existingCheckbox);
+    // Use the global_download_id from the WebSocket data
+    const globalDownloadId = data.global_download_id || '';
+    console.log('🔍 [DEBUG] Using globalDownloadId from WebSocket data:', globalDownloadId);
     
     actionsContainer.innerHTML = `
         <button class="item-button extract-button" data-download-id="${data.download_id}" data-title="${data.title}" data-file-path="${data.file_path}" data-video-id="${data.video_id}">

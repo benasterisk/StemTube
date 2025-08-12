@@ -228,15 +228,8 @@ class UserSessionManager:
                 
             print(f"[DEBUG] Download completion: item_id={item_id}, found_in_manager={download_item is not None}, video_id={video_id}")
             
-            # Include video_id in the WebSocket event for frontend deduplication
-            socketio.emit('download_complete', {
-                'download_id': item_id, 
-                'title': title, 
-                'file_path': file_path,
-                'video_id': video_id  # Add video_id for extraction deduplication
-            }, room=room_key or self._key())
-            
-            # persist to database
+            # persist to database first to get global_download_id
+            global_download_id = None
             if user_id and download_item:
                 # Get file size if possible
                 file_size = 0
@@ -247,7 +240,7 @@ class UserSessionManager:
                         file_size = 0
                 
                 # Use download_item metadata for database persistence
-                db_add_download(user_id, {
+                global_download_id = db_add_download(user_id, {
                     "video_id": download_item.video_id,
                     "title": download_item.title,
                     "thumbnail_url": download_item.thumbnail_url or "",
@@ -274,7 +267,7 @@ class UserSessionManager:
                     
                 print(f"[DEBUG] Fallback db save: item_id={item_id}, extracted video_id={fallback_video_id}")
                 
-                db_add_download(user_id, {
+                global_download_id = db_add_download(user_id, {
                     "video_id": fallback_video_id,
                     "title": title,
                     "thumbnail_url": "",
@@ -283,6 +276,15 @@ class UserSessionManager:
                     "quality": "best",
                     "file_size": file_size
                 })
+            
+            # Emit WebSocket event with global_download_id included
+            socketio.emit('download_complete', {
+                'download_id': item_id, 
+                'title': title, 
+                'file_path': file_path,
+                'video_id': video_id,  # Add video_id for extraction deduplication
+                'global_download_id': global_download_id  # Add for remove functionality
+            }, room=room_key or self._key())
 
     def _emit_error_with_room(self, item_id, error, room_key=None):
         socketio.emit('download_error', {'download_id': item_id, 'error_message': error}, room=room_key or self._key())

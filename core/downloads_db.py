@@ -157,6 +157,9 @@ def add_or_update(user_id, meta):
             quality
         ))
         conn.commit()
+        
+        # Return the global_download_id for use in WebSocket events
+        return global_download_id
 
 def find_global_download(video_id, media_type, quality):
     """Check if a download already exists globally."""
