@@ -1554,8 +1554,13 @@ function updateDownloadProgress(data) {
 }
 
 function updateDownloadComplete(data) {
+    console.log('🎯 [DEBUG] updateDownloadComplete called with data:', data);
     const downloadElement = document.getElementById(`download-${data.download_id}`);
-    if (!downloadElement) return;
+    if (!downloadElement) {
+        console.error('🔴 [DEBUG] Download element not found for ID:', data.download_id);
+        return;
+    }
+    console.log('✅ [DEBUG] Found download element:', downloadElement);
     
     const progressFill = downloadElement.querySelector('.progress-fill');
     const progressPercentage = downloadElement.querySelector('.progress-percentage');
@@ -1573,6 +1578,7 @@ function updateDownloadComplete(data) {
     // Get the global_download_id from the existing checkbox
     const existingCheckbox = downloadElement.querySelector('.user-item-checkbox');
     const globalDownloadId = existingCheckbox ? existingCheckbox.dataset.downloadId : '';
+    console.log('🔍 [DEBUG] Extracted globalDownloadId:', globalDownloadId, 'from checkbox:', existingCheckbox);
     
     actionsContainer.innerHTML = `
         <button class="item-button extract-button" data-download-id="${data.download_id}" data-title="${data.title}" data-file-path="${data.file_path}" data-video-id="${data.video_id}">
@@ -1650,9 +1656,13 @@ function updateDownloadComplete(data) {
     // Add remove from list button event handler
     const removeFromListButton = actionsContainer.querySelector('.remove-from-list');
     if (removeFromListButton) {
+        console.log('✅ [DEBUG] Remove button found, adding event listener. ID:', removeFromListButton.dataset.downloadId);
         removeFromListButton.addEventListener('click', () => {
+            console.log('🔴 [DEBUG] Remove button clicked! Calling removeDownloadFromList with ID:', removeFromListButton.dataset.downloadId);
             removeDownloadFromList(removeFromListButton.dataset.downloadId);
         });
+    } else {
+        console.error('🔴 [DEBUG] Remove button not found in actionsContainer');
     }
 }
 
