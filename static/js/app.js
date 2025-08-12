@@ -1577,6 +1577,9 @@ function updateDownloadComplete(data) {
         <button class="item-button open-folder-button" data-file-path="${data.file_path}">
             <i class="fas fa-download"></i> Get File
         </button>
+        <button class="item-button remove-from-list" data-download-id="${data.global_download_id}" title="Remove from my list">
+            <i class="fas fa-eye-slash"></i> Remove from List
+        </button>
     `;
     
     // Add event listeners
@@ -1639,6 +1642,14 @@ function updateDownloadComplete(data) {
             showFilesModal(folderPath, title);
         }
     });
+    
+    // Add remove from list button event handler
+    const removeFromListButton = actionsContainer.querySelector('.remove-from-list');
+    if (removeFromListButton) {
+        removeFromListButton.addEventListener('click', () => {
+            removeFromDownloadList(removeFromListButton.dataset.downloadId);
+        });
+    }
 }
 
 function updateDownloadError(data) {
