@@ -1327,38 +1327,8 @@ def create_zip_for_extraction(extraction_id):
         extraction = se.get_extraction_status(extraction_id)
         
         if not extraction and extraction_id:
-            # Try to find stem files by searching the downloads directory
-            downloads_dir = ensure_valid_downloads_directory()
-            
-            for item in os.listdir(downloads_dir):
-                item_path = os.path.join(downloads_dir, item)
-                if os.path.isdir(item_path):
-                    stems_dir = os.path.join(item_path, 'stems')
-                    if os.path.exists(stems_dir):
-                        # Found a stems directory, try to create ZIP
-                        try:
-                            import zipfile
-                            import tempfile
-                            
-                            # Create ZIP file path
-                            zip_filename = f"{item}_stems.zip"
-                            zip_path = os.path.join(stems_dir, zip_filename)
-                            
-                            # Create ZIP file
-                            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                                for stem_file in os.listdir(stems_dir):
-                                    if stem_file.endswith('.mp3'):
-                                        file_path = os.path.join(stems_dir, stem_file)
-                                        zipf.write(file_path, stem_file)
-                            
-                            if os.path.exists(zip_path):
-                                return jsonify({'success': True, 'zip_path': zip_path})
-                                
-                        except Exception as zip_error:
-                            print(f"Error creating ZIP: {zip_error}")
-                            continue
-            
-            return jsonify({'error': 'Extraction not found or no stems available', 'success': False}), 404
+            # Extraction not found in user records - filesystem scanning disabled for security
+            return jsonify({'error': 'Extraction not found in your records', 'success': False}), 404
         
         if not extraction:
             return jsonify({'error': 'Extraction not found', 'success': False}), 404
@@ -1398,13 +1368,13 @@ def create_zip_for_extraction(extraction_id):
 # User View Management API Routes
 # ------------------------------------------------------------------
 
-@app.route('/api/user/downloads/<int:download_id>/remove-from-list', methods=['DELETE'])
+@app.route('/api/user/downloads/<video_id>/remove-from-list', methods=['DELETE'])
 @api_login_required
-def remove_download_from_user_list(download_id):
+def remove_download_from_user_list(video_id):
     """Remove a download from user's personal list (keeps file and global record)."""
     try:
         from core.downloads_db import remove_user_download_access
-        success, message = remove_user_download_access(current_user.id, download_id)
+        success, message = remove_user_download_access(current_user.id, video_id)
         
         if success:
             return jsonify({'success': True, 'message': message})
@@ -1414,13 +1384,13 @@ def remove_download_from_user_list(download_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/user/extractions/<int:download_id>/remove-from-list', methods=['DELETE'])
+@app.route('/api/user/extractions/<video_id>/remove-from-list', methods=['DELETE'])
 @api_login_required  
-def remove_extraction_from_user_list(download_id):
+def remove_extraction_from_user_list(video_id):
     """Remove an extraction from user's personal list (keeps extraction and global record)."""
     try:
         from core.downloads_db import remove_user_extraction_access
-        success, message = remove_user_extraction_access(current_user.id, download_id)
+        success, message = remove_user_extraction_access(current_user.id, video_id)
         
         if success:
             return jsonify({'success': True, 'message': message})
@@ -1569,19 +1539,28 @@ def admin_get_storage_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/cleanup/downloads/<int:global_download_id>', methods=['DELETE'])
+@app.route('/api/admin/cleanup/downloads/<video_id>', methods=['DELETE'])
 @api_login_required
-def admin_delete_download_completely(global_download_id):
-    """Delete a download completely including all files and database records."""
+def admin_delete_download_by_video_id(video_id):
+    """Delete a download completely including all files and database records using video_id."""
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
         
     try:
-        from core.downloads_db import delete_download_completely
+        # Find the global download by video_id
+        from core.downloads_db import get_all_downloads_for_admin, delete_download_completely
         from core.file_cleanup import delete_download_files
         
+        all_downloads = get_all_downloads_for_admin()
+        download_info = next((d for d in all_downloads if d['video_id'] == video_id), None)
+        
+        if not download_info:
+            return jsonify({'error': f'Download with video_id "{video_id}" not found'}), 404
+        
+        global_download_id = download_info['global_id']
+        
         # Delete from database first to get download info
-        success, message, download_info = delete_download_completely(global_download_id)
+        success, message, detailed_info = delete_download_completely(global_download_id)
         
         if not success:
             return jsonify({'error': message}), 400
@@ -1589,15 +1568,15 @@ def admin_delete_download_completely(global_download_id):
         file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
         
         # Delete associated files if we have download info
-        if download_info:
-            file_success, file_message, file_cleanup_stats = delete_download_files(download_info)
+        if detailed_info:
+            file_success, file_message, file_cleanup_stats = delete_download_files(detailed_info)
             if not file_success:
-                # Log the error but don't fail the entire operation since DB is already updated
                 print(f"File cleanup warning: {file_message}")
         
         return jsonify({
             'success': True,
             'message': message,
+            'video_id': video_id,
             'file_cleanup': file_cleanup_stats
         })
         
@@ -1638,6 +1617,49 @@ def admin_reset_extraction_status(global_download_id):
         return jsonify({
             'success': True,
             'message': message,
+            'file_cleanup': file_cleanup_stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cleanup/downloads/<video_id>/reset-extraction', methods=['POST'])
+@api_login_required
+def admin_reset_extraction_by_video_id(video_id):
+    """Reset extraction status for a download while keeping the download record using video_id."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    try:
+        # Find the global download by video_id
+        from core.downloads_db import reset_extraction_status, get_all_downloads_for_admin
+        from core.file_cleanup import delete_extraction_files_only
+        
+        all_downloads = get_all_downloads_for_admin()
+        download_info = next((d for d in all_downloads if d['video_id'] == video_id), None)
+        
+        if not download_info:
+            return jsonify({'error': f'Download with video_id "{video_id}" not found'}), 404
+        
+        global_download_id = download_info['global_id']
+        
+        # Reset database status
+        success, message = reset_extraction_status(global_download_id)
+        
+        if not success:
+            return jsonify({'error': message}), 400
+        
+        # Delete extraction files
+        file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
+        if download_info.get('extracted'):
+            file_success, file_message, file_cleanup_stats = delete_extraction_files_only(download_info)
+            if not file_success:
+                print(f"File cleanup warning: {file_message}")
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'video_id': video_id,
             'file_cleanup': file_cleanup_stats
         })
         
@@ -1994,34 +2016,9 @@ def serve_extracted_stem(extraction_id, stem_name):
                 print(f"Error loading database extraction {extraction_id}: {e}")
                 # Fall through to file system search
         
-        # If not found in database, try to find the stem file by searching
+        # If not found in database or session, return error - filesystem scanning disabled
         if not extraction:
-            downloads_dir = ensure_valid_downloads_directory()
-            
-            # The extraction_id often contains the audio filename and timestamp
-            # Try to match by searching for stems directories with matching files
-            for item in os.listdir(downloads_dir):
-                item_path = os.path.join(downloads_dir, item)
-                if os.path.isdir(item_path):
-                    stems_dir = os.path.join(item_path, 'stems')
-                    if os.path.exists(stems_dir):
-                        # Look for the specific stem file
-                        stem_file = os.path.join(stems_dir, f'{stem_name}.mp3')
-                        if os.path.exists(stem_file):
-                            # Additional check: see if this seems to be the right extraction
-                            # by checking if the extraction_id partially matches the directory or files
-                            audio_dir = os.path.join(item_path, 'audio')
-                            if os.path.exists(audio_dir):
-                                # Security check first
-                                abs_file_path = os.path.abspath(stem_file)
-                                abs_downloads_dir = os.path.abspath(downloads_dir)
-                                
-                                if abs_file_path.startswith(abs_downloads_dir):
-                                    directory = os.path.dirname(abs_file_path)
-                                    filename = os.path.basename(abs_file_path)
-                                    return send_from_directory(directory, filename, mimetype='audio/mpeg')
-            
-            return jsonify({'error': f'Stem file not found: {stem_name}'}), 404
+            return jsonify({'error': f'Stem file not found in your records: {stem_name}'}), 404
         
         if extraction.status.value != 'completed':
             return jsonify({'error': 'Extraction not completed'}), 400

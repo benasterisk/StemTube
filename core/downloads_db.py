@@ -743,17 +743,27 @@ def cleanup_duplicate_user_downloads():
 
 # ============ USER VIEW MANAGEMENT FUNCTIONS ============
 
-def remove_user_download_access(user_id, global_download_id):
+def remove_user_download_access(user_id, video_id):
     """Remove user's access to a download without affecting global record or files."""
     with _conn() as conn:
         cursor = conn.cursor()
         
         try:
+            print(f"[DEBUG] Looking for user_id={user_id}, video_id='{video_id}'")
+            
+            # First, let's see what video_ids this user actually has
+            cursor.execute("""
+                SELECT video_id, title FROM user_downloads 
+                WHERE user_id=?
+            """, (user_id,))
+            user_videos = cursor.fetchall()
+            print(f"[DEBUG] User {user_id} has video_ids: {[row['video_id'] for row in user_videos]}")
+            
             # Check if user has access to this download and if it has extraction
             cursor.execute("""
                 SELECT id, title, extracted FROM user_downloads 
-                WHERE user_id=? AND global_download_id=?
-            """, (user_id, global_download_id))
+                WHERE user_id=? AND video_id=?
+            """, (user_id, video_id))
             
             user_download = cursor.fetchone()
             if not user_download:
@@ -766,14 +776,14 @@ def remove_user_download_access(user_id, global_download_id):
                 cursor.execute("""
                     UPDATE user_downloads 
                     SET file_path=NULL, media_type=NULL, quality=NULL
-                    WHERE user_id=? AND global_download_id=?
-                """, (user_id, global_download_id))
+                    WHERE user_id=? AND video_id=?
+                """, (user_id, video_id))
             else:
                 # No extraction, safe to delete entire record
                 cursor.execute("""
                     DELETE FROM user_downloads 
-                    WHERE user_id=? AND global_download_id=?
-                """, (user_id, global_download_id))
+                    WHERE user_id=? AND video_id=?
+                """, (user_id, video_id))
             
             conn.commit()
             return True, f"Removed '{user_download['title']}' from your downloads list"
@@ -782,7 +792,7 @@ def remove_user_download_access(user_id, global_download_id):
             conn.rollback()
             return False, f"Database error: {str(e)}"
 
-def remove_user_extraction_access(user_id, global_download_id):
+def remove_user_extraction_access(user_id, video_id):
     """Remove user's access to an extraction without affecting global record or files."""
     with _conn() as conn:
         cursor = conn.cursor()
@@ -791,8 +801,8 @@ def remove_user_extraction_access(user_id, global_download_id):
             # Check if user has access to this extraction
             cursor.execute("""
                 SELECT id, title FROM user_downloads 
-                WHERE user_id=? AND global_download_id=? AND extracted=1
-            """, (user_id, global_download_id))
+                WHERE user_id=? AND video_id=? AND extracted=1
+            """, (user_id, video_id))
             
             user_extraction = cursor.fetchone()
             if not user_extraction:
@@ -802,8 +812,8 @@ def remove_user_extraction_access(user_id, global_download_id):
             cursor.execute("""
                 UPDATE user_downloads 
                 SET extracted=0, extraction_model=NULL, stems_paths=NULL, stems_zip_path=NULL, extracted_at=NULL 
-                WHERE user_id=? AND global_download_id=? AND extracted=1
-            """, (user_id, global_download_id))
+                WHERE user_id=? AND video_id=? AND extracted=1
+            """, (user_id, video_id))
             
             conn.commit()
             return True, f"Removed '{user_extraction['title']}' from your extractions list"

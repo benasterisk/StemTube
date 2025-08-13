@@ -1126,8 +1126,10 @@ async function updateExtractButton(button, extractionStatus) {
 }
 
 function createDownloadElement(item) {
-    // Debug: log the item structure
+    // Debug: log the item structure and video_id specifically
     console.log('createDownloadElement item:', item);
+    console.log('🔍 [DEBUG] video_id field:', item.video_id);
+    console.log('🔍 [DEBUG] Available fields:', Object.keys(item));
     // Use download_id for live downloads, id for database downloads, or fallback to video_id
     const itemId = item.download_id || item.id || item.video_id;
     
@@ -1141,7 +1143,7 @@ function createDownloadElement(item) {
     downloadElement.innerHTML = `
         <div class="item-header">
             <div class="item-title-container">
-                <input type="checkbox" class="user-item-checkbox" data-download-id="${item.global_download_id}" value="${item.global_download_id}">
+                <input type="checkbox" class="user-item-checkbox" data-video-id="${item.video_id}" value="${item.global_download_id}">
                 <div class="item-title">${item.title}</div>
             </div>
             <div class="item-status ${statusClass}">${statusText}</div>
@@ -1163,7 +1165,7 @@ function createDownloadElement(item) {
                 <button class="item-button open-folder-button" data-file-path="${item.file_path}">
                     <i class="fas fa-download"></i> Get File
                 </button>
-                <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                <button class="item-button remove-from-list" data-video-id="${item.video_id}" title="Remove from my list">
                     <i class="fas fa-eye-slash"></i> Remove from List
                 </button>
             ` : ''}
@@ -1181,7 +1183,7 @@ function createDownloadElement(item) {
                     <button class="item-button delete-button" data-download-id="${itemId}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
-                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                    <button class="item-button remove-from-list" data-video-id="${item.video_id}" title="Remove from my list">
                         <i class="fas fa-eye-slash"></i> Remove from List
                     </button>
                 </div>
@@ -1274,8 +1276,15 @@ function createDownloadElement(item) {
         // Add remove from list button event handler
         const removeFromListButton = downloadElement.querySelector('.remove-from-list');
         if (removeFromListButton) {
+            console.log('🔍 [DEBUG] Remove button video_id:', removeFromListButton.dataset.videoId);
             removeFromListButton.addEventListener('click', () => {
-                removeDownloadFromList(removeFromListButton.dataset.downloadId);
+                console.log('🔴 [DEBUG] Remove clicked with video_id:', removeFromListButton.dataset.videoId);
+                if (!removeFromListButton.dataset.videoId || removeFromListButton.dataset.videoId === '' || removeFromListButton.dataset.videoId === 'undefined') {
+                    console.error('🔴 [DEBUG] Invalid video_id, using fallback approach');
+                    showToast('Error: Invalid video ID. Please refresh the page.', 'error');
+                    return;
+                }
+                removeDownloadFromList(removeFromListButton.dataset.videoId);
             });
         }
     }, 0);
@@ -1297,7 +1306,7 @@ function createExtractionElement(item) {
     extractionElement.innerHTML = `
         <div class="item-header">
             <div class="item-title-container">
-                <input type="checkbox" class="user-item-checkbox" data-download-id="${item.global_download_id}" value="${item.global_download_id}">
+                <input type="checkbox" class="user-item-checkbox" data-video-id="${item.video_id}" value="${item.global_download_id}">
                 <div class="item-title">${title}</div>
             </div>
             <div class="item-status ${statusClass}">${statusText}</div>
@@ -1326,7 +1335,7 @@ function createExtractionElement(item) {
                     <button class="item-button download-zip-button" data-file-path="${item.zip_path || ''}" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-file-archive"></i> Download All (ZIP)
                     </button>
-                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                    <button class="item-button remove-from-list" data-video-id="${item.video_id}" title="Remove from my list">
                         <i class="fas fa-eye-slash"></i> Remove from List
                     </button>
                 </div>
@@ -1345,7 +1354,7 @@ function createExtractionElement(item) {
                     <button class="item-button delete-button" data-extraction-id="${item.extraction_id}">
                         <i class="fas fa-trash"></i> Delete
                     </button>
-                    <button class="item-button remove-from-list" data-download-id="${item.global_download_id}" title="Remove from my list">
+                    <button class="item-button remove-from-list" data-video-id="${item.video_id}" title="Remove from my list">
                         <i class="fas fa-eye-slash"></i> Remove from List
                     </button>
                 </div>
@@ -1475,7 +1484,7 @@ function createExtractionElement(item) {
         const removeFromListButton = extractionElement.querySelector('.remove-from-list');
         if (removeFromListButton) {
             removeFromListButton.addEventListener('click', () => {
-                removeExtractionFromList(removeFromListButton.dataset.downloadId);
+                removeExtractionFromList(removeFromListButton.dataset.videoId);
             });
         }
     }, 0);
@@ -1575,9 +1584,9 @@ function updateDownloadComplete(data) {
     statusElement.textContent = 'Completed';
     statusElement.className = 'item-status status-completed';
     
-    // Use the global_download_id from the WebSocket data
-    const globalDownloadId = data.global_download_id || '';
-    console.log('🔍 [DEBUG] Using globalDownloadId from WebSocket data:', globalDownloadId);
+    // Use the video_id from the WebSocket data (consistent identifier)
+    const videoId = data.video_id || '';
+    console.log('🔍 [DEBUG] Using video_id from WebSocket data:', videoId);
     
     actionsContainer.innerHTML = `
         <button class="item-button extract-button" data-download-id="${data.download_id}" data-title="${data.title}" data-file-path="${data.file_path}" data-video-id="${data.video_id}">
@@ -1586,7 +1595,7 @@ function updateDownloadComplete(data) {
         <button class="item-button open-folder-button" data-file-path="${data.file_path}">
             <i class="fas fa-download"></i> Get File
         </button>
-        <button class="item-button remove-from-list" data-download-id="${globalDownloadId}" title="Remove from my list">
+        <button class="item-button remove-from-list" data-video-id="${videoId}" title="Remove from my list">
             <i class="fas fa-eye-slash"></i> Remove from List
         </button>
     `;
@@ -1655,10 +1664,10 @@ function updateDownloadComplete(data) {
     // Add remove from list button event handler
     const removeFromListButton = actionsContainer.querySelector('.remove-from-list');
     if (removeFromListButton) {
-        console.log('✅ [DEBUG] Remove button found, adding event listener. ID:', removeFromListButton.dataset.downloadId);
+        console.log('✅ [DEBUG] Remove button found, adding event listener. video_id:', removeFromListButton.dataset.videoId);
         removeFromListButton.addEventListener('click', () => {
-            console.log('🔴 [DEBUG] Remove button clicked! Calling removeDownloadFromList with ID:', removeFromListButton.dataset.downloadId);
-            removeDownloadFromList(removeFromListButton.dataset.downloadId);
+            console.log('🔴 [DEBUG] Remove button clicked! Calling removeDownloadFromList with video_id:', removeFromListButton.dataset.videoId);
+            removeDownloadFromList(removeFromListButton.dataset.videoId);
         });
     } else {
         console.error('🔴 [DEBUG] Remove button not found in actionsContainer');
@@ -2860,11 +2869,11 @@ function createCleanupTableRow(item) {
         <td class="extracted-column">${extractedStatus}</td>
         <td class="date-column">${createdAt}</td>
         <td class="actions-column">
-            <button class="row-action danger" onclick="deleteDownload(${item.global_id})" title="Delete Download">
+            <button class="row-action danger" onclick="deleteDownload('${item.video_id}')" title="Delete Download">
                 <i class="fas fa-trash"></i>
             </button>
             ${item.extracted ? `
-                <button class="row-action warning" onclick="resetExtraction(${item.global_id})" title="Reset Extraction">
+                <button class="row-action warning" onclick="resetExtraction('${item.video_id}')" title="Reset Extraction">
                     <i class="fas fa-undo"></i>
                 </button>
             ` : ''}
@@ -3089,7 +3098,7 @@ function performBulkOperation(endpoint, downloadIds, operationName) {
             
             // Reload data after a short delay
             setTimeout(() => {
-                loadCleanupData();
+                loadCleanupData(); // Refresh admin table
                 if (progressDiv) {
                     progressDiv.style.display = 'none';
                 }
@@ -3116,12 +3125,12 @@ function performBulkOperation(endpoint, downloadIds, operationName) {
 }
 
 // Delete single download
-function deleteDownload(downloadId) {
+function deleteDownload(videoId) {
     if (!confirm('Are you sure you want to permanently delete this download? This cannot be undone.')) {
         return;
     }
     
-    fetch(`/api/admin/cleanup/downloads/${downloadId}`, {
+    fetch(`/api/admin/cleanup/downloads/${encodeURIComponent(videoId)}`, {
         method: 'DELETE',
         headers: {
             'X-CSRF-Token': getCsrfToken()
@@ -3131,7 +3140,7 @@ function deleteDownload(downloadId) {
     .then(data => {
         if (data.success) {
             showToast('Download deleted successfully', 'success');
-            loadCleanupData(); // Refresh table
+            loadCleanupData(); // Refresh admin table
         } else {
             throw new Error(data.error || 'Delete failed');
         }
@@ -3143,12 +3152,12 @@ function deleteDownload(downloadId) {
 }
 
 // Reset single extraction
-function resetExtraction(downloadId) {
+function resetExtraction(videoId) {
     if (!confirm('Are you sure you want to reset the extraction status? This will remove stems files but keep the download.')) {
         return;
     }
     
-    fetch(`/api/admin/cleanup/downloads/${downloadId}/reset-extraction`, {
+    fetch(`/api/admin/cleanup/downloads/${encodeURIComponent(videoId)}/reset-extraction`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -3159,7 +3168,7 @@ function resetExtraction(downloadId) {
     .then(data => {
         if (data.success) {
             showToast('Extraction status reset successfully', 'success');
-            loadCleanupData(); // Refresh table
+            loadCleanupData(); // Refresh admin table
         } else {
             throw new Error(data.error || 'Reset failed');
         }
@@ -3179,12 +3188,13 @@ function truncateText(text, maxLength) {
 // ============ USER VIEW MANAGEMENT FUNCTIONS ============
 
 // Remove download from user's personal list
-function removeDownloadFromList(downloadId) {
+function removeDownloadFromList(videoId) {
     if (!confirm('Remove this download from your list? This will not delete the actual file.')) {
         return;
     }
     
-    fetch(`/api/user/downloads/${downloadId}/remove-from-list`, {
+    console.log('🚀 [DEBUG] Calling API with video_id:', videoId);
+    fetch(`/api/user/downloads/${videoId}/remove-from-list`, {
         method: 'DELETE',
         headers: {
             'X-CSRF-Token': getCsrfToken()
@@ -3201,17 +3211,8 @@ function removeDownloadFromList(downloadId) {
     .then(data => {
         if (data.success) {
             showToast(data.message, 'success');
-            // Remove the element from DOM - find by global_download_id in checkbox
-            const downloadElement = document.querySelector(`[data-download-id="${downloadId}"]`)?.closest('.download-item');
-            if (downloadElement) {
-                downloadElement.remove();
-            } else {
-                // Fallback: try to find by constructed ID (for backward compatibility)
-                const fallbackElement = document.getElementById(`download-${downloadId}`);
-                if (fallbackElement) {
-                    fallbackElement.remove();
-                }
-            }
+            // Always refresh downloads list from database - this is the reliable approach
+            loadDownloads();
             // Update management controls visibility
             updateUserManagementControls();
         } else {
@@ -3225,12 +3226,13 @@ function removeDownloadFromList(downloadId) {
 }
 
 // Remove extraction from user's personal list
-function removeExtractionFromList(downloadId) {
+function removeExtractionFromList(videoId) {
     if (!confirm('Remove this extraction from your list? This will not delete the actual stems.')) {
         return;
     }
     
-    fetch(`/api/user/extractions/${downloadId}/remove-from-list`, {
+    console.log('🚀 [DEBUG] Calling extraction API with video_id:', videoId);
+    fetch(`/api/user/extractions/${videoId}/remove-from-list`, {
         method: 'DELETE',
         headers: {
             'X-CSRF-Token': getCsrfToken()
@@ -3240,14 +3242,8 @@ function removeExtractionFromList(downloadId) {
     .then(data => {
         if (data.success) {
             showToast(data.message, 'success');
-            // Remove the element from DOM - find by download ID since extraction elements use extraction-{id} format
-            const extractionElements = document.querySelectorAll('.extraction-item');
-            extractionElements.forEach(element => {
-                const checkbox = element.querySelector('.user-item-checkbox');
-                if (checkbox && checkbox.dataset.downloadId === downloadId) {
-                    element.remove();
-                }
-            });
+            // Always refresh extractions list from database - this is the reliable approach
+            loadExtractions();
             // Update management controls visibility
             updateUserManagementControls();
         } else {
