@@ -475,6 +475,7 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/logging.js') }}"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app-extensions.js') }}"></script>
@@ -483,6 +484,11 @@
     <script>
         // Global admin status variable for JavaScript
         const isAdmin = {% if current_user.is_admin %}true{% else %}false{% endif %};
+        
+        // Set user ID for browser logging if authenticated
+        {% if current_user.is_authenticated %}
+        setLogUserId({{ current_user.id }});
+        {% endif %}
         
         document.addEventListener('DOMContentLoaded', () => {
             // Fonction pour détecter les appareils mobiles

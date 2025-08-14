@@ -17,6 +17,21 @@ import re
 from datetime import datetime
 from functools import wraps
 
+# Setup logging first (before other imports)
+from core.logging_config import (
+    setup_logging, get_logger, get_access_logger, get_database_logger, get_processing_logger,
+    log_request, log_user_action, log_database_operation, log_processing_event, log_with_context
+)
+
+# Initialize logging system
+log_config = setup_logging(app_name="stemtube", log_level="INFO")
+logger = get_logger(__name__)
+access_logger = get_access_logger()
+db_logger = get_database_logger()
+processing_logger = get_processing_logger()
+
+logger.info("StemTube Web application starting up...")
+
 from flask import (
     Flask, render_template, request, jsonify, send_from_directory,
     redirect, url_for, flash, session
@@ -64,7 +79,8 @@ from core.downloads_db import (
     set_user_extraction_in_progress as db_set_user_extraction_in_progress,
     clear_extraction_in_progress as db_clear_extraction_in_progress,
     cleanup_stuck_extractions,
-    cleanup_duplicate_user_downloads
+    cleanup_duplicate_user_downloads,
+    comprehensive_cleanup
 )
 
 # ------------------------------------------------------------------
@@ -88,15 +104,23 @@ def is_valid_youtube_video_id(video_id):
 # ------------------------------------------------------------------
 # Bootstrap
 # ------------------------------------------------------------------
+logger.info("Initializing application components...")
 ensure_ffmpeg_available()
+logger.info("FFmpeg availability ensured")
+
 init_db()
+logger.info("Authentication database initialized")
+
 init_downloads_table()
-cleanup_stuck_extractions()  # Clean up any stuck extractions from previous runs
-cleanup_duplicate_user_downloads()  # Clean up duplicate user_downloads records
+logger.info("Downloads database initialized")
+
+comprehensive_cleanup()
+logger.info("Database cleanup completed")
 
 # ------------------------------------------------------------------
 # Flask & SocketIO setup
 # ------------------------------------------------------------------
+logger.info("Setting up Flask application and SocketIO...")
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'stemtubes-web-secret-key'
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -126,6 +150,11 @@ socketio = SocketIO(
     async_mode='threading',
     manage_session=False
 )
+
+# Setup request logging middleware
+from core.request_logging import setup_request_logging
+setup_request_logging(app)
+logger.info("Request logging middleware configured")
 
 # ------------------------------------------------------------------
 # Global YouTube client
@@ -219,14 +248,15 @@ class UserSessionManager:
             
             # Fallback only if we couldn't find the item (shouldn't happen)
             if not video_id:
-                print(f"[WARNING] Could not find video_id for download {item_id}, using fallback extraction")
+                logger.warning(f"Could not find video_id for download {item_id}, using fallback extraction")
                 if '_' in item_id:
                     parts = item_id.split('_')
                     video_id = '_'.join(parts[:-1])
                 else:
                     video_id = item_id
                 
-            print(f"[DEBUG] Download completion: item_id={item_id}, found_in_manager={download_item is not None}, video_id={video_id}")
+            with log_with_context(logger, video_id=video_id):
+                logger.debug(f"Download completion: item_id={item_id}, found_in_manager={download_item is not None}")
             
             # persist to database first to get global_download_id
             global_download_id = None
@@ -265,7 +295,8 @@ class UserSessionManager:
                 else:
                     fallback_video_id = item_id
                     
-                print(f"[DEBUG] Fallback db save: item_id={item_id}, extracted video_id={fallback_video_id}")
+                with log_with_context(logger, video_id=fallback_video_id):
+                    logger.debug(f"Fallback db save: item_id={item_id}")
                 
                 global_download_id = db_add_download(user_id, {
                     "video_id": fallback_video_id,
@@ -290,23 +321,25 @@ class UserSessionManager:
         socketio.emit('download_error', {'download_id': item_id, 'error_message': error}, room=room_key or self._key())
     
     def _emit_extraction_error_with_room(self, item_id, error, room_key=None):
-        print(f"[CALLBACK DEBUG] Extraction error: item_id={item_id}, error={error}")
+        logger.error(f"Extraction error: item_id={item_id}, error={error}")
         socketio.emit('extraction_error', {'extraction_id': item_id, 'error_message': error}, room=room_key or self._key())
         
         # Clear the extracting flag for failed extractions
         se = self.get_stems_extractor()
         extraction = se.get_extraction_status(item_id)
         if extraction and extraction.video_id:
-            print(f"[CALLBACK DEBUG] Clearing extracting flag for failed extraction: video_id={extraction.video_id}")
+            with log_with_context(logger, video_id=extraction.video_id):
+                logger.info("Clearing extracting flag for failed extraction")
             try:
                 db_clear_extraction_in_progress(extraction.video_id)
-                print(f"[CALLBACK DEBUG] Successfully cleared extracting flag")
+                logger.debug("Successfully cleared extracting flag")
             except Exception as db_error:
-                print(f"[CALLBACK DEBUG] Error clearing extracting flag: {db_error}")
+                logger.error(f"Error clearing extracting flag: {db_error}")
 
     def _emit_extraction_complete_with_room(self, item_id, title=None, video_id=None, room_key=None, user_id=None, item=None):
         """Handle extraction completion - always emits extraction_complete event."""
-        print(f"[CALLBACK DEBUG] Extraction finished: item_id={item_id}, title={title}, video_id={video_id}, user_id={user_id}")
+        with log_with_context(processing_logger, user_id=user_id, video_id=video_id):
+            processing_logger.info(f"Extraction finished: {title}")
         
         # Send to the specific user who initiated the extraction
         socketio.emit('extraction_complete', {
@@ -316,7 +349,7 @@ class UserSessionManager:
         }, room=room_key or self._key())
         
         # BROADCAST to ALL connected clients (no room restriction)
-        print(f"[CALLBACK DEBUG] Broadcasting extraction completion to ALL connected clients")
+        logger.debug("Broadcasting extraction completion to ALL connected clients")
         try:
             # Use broadcast=True to send to ALL connected clients regardless of rooms
             socketio.emit('extraction_completed_global', {
@@ -324,9 +357,9 @@ class UserSessionManager:
                 'video_id': video_id,
                 'title': title
             }, broadcast=True)
-            print(f"[CALLBACK DEBUG] Global broadcast sent with broadcast=True")
+            logger.debug("Global broadcast sent with broadcast=True")
         except Exception as e:
-            print(f"[CALLBACK DEBUG] Error sending global broadcast: {e}")
+            logger.error(f"Error sending global broadcast: {e}")
             
         # Alternative approach: try sending without any room parameter
         try:
@@ -336,14 +369,16 @@ class UserSessionManager:
                 'title': title,
                 'message': 'New extraction available - please refresh'
             })
-            print(f"[CALLBACK DEBUG] Alternative global event sent")
+            logger.debug("Alternative global event sent")
         except Exception as e:
-            print(f"[CALLBACK DEBUG] Error sending alternative event: {e}")
+            logger.error(f"Error sending alternative event: {e}")
         
         # Persist completed extraction to downloads database
         if user_id and video_id and item:
-            print(f"[CALLBACK DEBUG] User ID: {user_id}, Video ID: {video_id}")
-            print(f"[CALLBACK DEBUG] Extraction details: status={item.status.value}, video_id='{item.video_id}', model={item.model_name}")
+            with log_with_context(logger, user_id=user_id, video_id=video_id):
+                logger.debug("Processing extraction completion context")
+            with log_with_context(processing_logger, video_id=item.video_id):
+                processing_logger.debug(f"Extraction details: status={item.status.value}, model={item.model_name}")
             print(f"[CALLBACK DEBUG] Stems paths: {item.output_paths}")
             print(f"[CALLBACK DEBUG] Zip path: {item.zip_path}")
             
@@ -581,15 +616,15 @@ def mixer():
 def search_videos():
     query = request.args.get('query', '')
     max_results = int(request.args.get('max_results', 10))
-    print(f"[API] Search request: query='{query}', max_results={max_results}")
+    logger.info(f"Search request: query='{query}', max_results={max_results}")
     if not query:
         return jsonify({'error': 'No query provided'}), 400
     try:
         response = aiotube_client.search_videos(query, max_results=max_results)
-        print(f"[API] Returning {len(response.get('items', []))} results")
+        logger.info(f"Returning {len(response.get('items', []))} search results")
         return jsonify(response)
     except Exception as e:
-        print(f"[API] Search error: {e}")
+        logger.error(f"Search error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/video/<video_id>', methods=['GET'])
@@ -737,13 +772,14 @@ def add_download():
         video_id = data['video_id']
         
         # DEBUG: Log the received video_id
-        print(f"[API DEBUG] Received video_id: '{video_id}' (length: {len(video_id)})")
-        print(f"[API DEBUG] Request data: {data}")
+        with log_with_context(logger, video_id=video_id):
+            logger.debug(f"Received video_id (length: {len(video_id)})")
+        logger.debug(f"Download request data: {data}")
         
         # VALIDATE VIDEO ID
         if not is_valid_youtube_video_id(video_id):
             error_msg = f'Invalid YouTube video ID: "{video_id}" (length: {len(video_id)}). YouTube video IDs must be exactly 11 characters long.'
-            print(f"[API DEBUG] REJECTED: {error_msg}")
+            logger.warning(f"Video ID validation failed: {error_msg}")
             return jsonify({'error': error_msg}), 400
         
         download_type = DownloadType.AUDIO if str(data['download_type']).lower() == 'audio' else DownloadType.VIDEO
@@ -1016,9 +1052,11 @@ def get_all_extractions():
         
         # Get historical extractions from database (excluding those in live session)
         history_raw = db_list_extractions(current_user.id)
-        print(f"[API DEBUG] Found {len(history_raw)} historical extractions for user {current_user.id}")
+        with log_with_context(logger, user_id=current_user.id):
+            logger.debug(f"Found {len(history_raw)} historical extractions")
         for item in history_raw:
-            print(f"[API DEBUG] Historical extraction: video_id={item['video_id']}, model={item['extraction_model']}, extracted_at={item['extracted_at']}")
+            with log_with_context(logger, video_id=item['video_id']):
+                logger.debug(f"Historical extraction: model={item['extraction_model']}, extracted_at={item['extracted_at']}")
         history = []
         
         for db_item in history_raw:
@@ -1377,6 +1415,19 @@ def remove_download_from_user_list(video_id):
         success, message = remove_user_download_access(current_user.id, video_id)
         
         if success:
+            # Clear any session data for this video
+            try:
+                dm = user_session_manager.get_download_manager()
+                # Remove from all session collections that might contain this video_id
+                for collection_name in ['queued_downloads', 'active_downloads', 'failed_downloads', 'completed_downloads']:
+                    collection = getattr(dm, collection_name, {})
+                    keys_to_remove = [k for k, v in collection.items() if hasattr(v, 'video_id') and v.video_id == video_id]
+                    for key in keys_to_remove:
+                        del collection[key]
+                        print(f"[SESSION CLEANUP] Removed {key} from {collection_name}")
+            except Exception as session_error:
+                print(f"[SESSION CLEANUP] Warning: {session_error}")
+            
             return jsonify({'success': True, 'message': message})
         else:
             return jsonify({'error': message}), 400
@@ -1393,6 +1444,19 @@ def remove_extraction_from_user_list(video_id):
         success, message = remove_user_extraction_access(current_user.id, video_id)
         
         if success:
+            # Clear any session data for this video
+            try:
+                se = user_session_manager.get_stems_extractor()
+                # Remove from all session collections that might contain this video_id
+                for collection_name in ['queued_extractions', 'active_extractions', 'failed_extractions', 'completed_extractions']:
+                    collection = getattr(se, collection_name, {})
+                    keys_to_remove = [k for k, v in collection.items() if hasattr(v, 'video_id') and v.video_id == video_id]
+                    for key in keys_to_remove:
+                        del collection[key]
+                        print(f"[SESSION CLEANUP] Removed {key} from {collection_name}")
+            except Exception as session_error:
+                print(f"[SESSION CLEANUP] Warning: {session_error}")
+            
             return jsonify({'success': True, 'message': message})
         else:
             return jsonify({'error': message}), 400
@@ -1485,6 +1549,249 @@ def bulk_remove_extractions_from_user_list():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Force removal endpoints for when regular removal doesn't work
+@app.route('/api/user/downloads/<video_id>/force-remove', methods=['DELETE'])
+@api_login_required
+def force_remove_download_from_user_list(video_id):
+    """Forcefully remove all access to a video_id (both download and extraction)."""
+    try:
+        from core.downloads_db import force_remove_all_user_access
+        success, message = force_remove_all_user_access(current_user.id, video_id)
+        
+        if success:
+            # Clear all session data for this video
+            try:
+                # Clear download manager session data
+                dm = user_session_manager.get_download_manager()
+                for collection_name in ['queued_downloads', 'active_downloads', 'failed_downloads', 'completed_downloads']:
+                    collection = getattr(dm, collection_name, {})
+                    keys_to_remove = [k for k, v in collection.items() if hasattr(v, 'video_id') and v.video_id == video_id]
+                    for key in keys_to_remove:
+                        del collection[key]
+                        print(f"[FORCE CLEANUP] Removed {key} from {collection_name}")
+                
+                # Clear extraction manager session data
+                se = user_session_manager.get_stems_extractor()
+                for collection_name in ['queued_extractions', 'active_extractions', 'failed_extractions', 'completed_extractions']:
+                    collection = getattr(se, collection_name, {})
+                    keys_to_remove = [k for k, v in collection.items() if hasattr(v, 'video_id') and v.video_id == video_id]
+                    for key in keys_to_remove:
+                        del collection[key]
+                        print(f"[FORCE CLEANUP] Removed {key} from {collection_name}")
+            except Exception as session_error:
+                print(f"[FORCE CLEANUP] Warning: {session_error}")
+            
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'error': message}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user/cleanup/comprehensive', methods=['POST'])
+@api_login_required
+def user_comprehensive_cleanup():
+    """Run comprehensive cleanup for the current user's data."""
+    try:
+        from core.downloads_db import comprehensive_cleanup
+        
+        # Run comprehensive cleanup
+        comprehensive_cleanup()
+        
+        # Clear current user's session data
+        try:
+            user_session_manager.clear_user_session(current_user.id)
+        except Exception as session_error:
+            print(f"[USER CLEANUP] Session clear warning: {session_error}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Comprehensive cleanup completed for your account'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ------------------------------------------------------------------
+# Browser Log Collection API Routes
+# ------------------------------------------------------------------
+
+@app.route('/api/logs/browser', methods=['POST'])
+@api_login_required
+def collect_browser_logs():
+    """Collect browser console logs sent from frontend."""
+    try:
+        data = request.json or {}
+        logs = data.get('logs', [])
+        
+        if not logs:
+            return jsonify({'success': True, 'message': 'No logs received'})
+        
+        # Get user context
+        user_id = current_user.id if current_user.is_authenticated else None
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        
+        # Create browser logger
+        browser_logger = get_logger('browser')
+        
+        # Process each log entry
+        for log_entry in logs:
+            level = log_entry.get('level', 'info')
+            message = log_entry.get('message', '')
+            timestamp = log_entry.get('timestamp', '')
+            session_id = log_entry.get('sessionId', '')
+            url = log_entry.get('url', '')
+            
+            # Add context and log the browser message
+            with log_with_context(browser_logger, 
+                                user_id=user_id, 
+                                ip_address=client_ip,
+                                browser_session_id=session_id,
+                                browser_url=url):
+                
+                if level == 'debug':
+                    browser_logger.debug(f"Browser: {message}")
+                elif level == 'info':
+                    browser_logger.info(f"Browser: {message}")
+                elif level == 'warn':
+                    browser_logger.warning(f"Browser: {message}")
+                elif level == 'error':
+                    browser_logger.error(f"Browser: {message}")
+                else:
+                    browser_logger.info(f"Browser [{level}]: {message}")
+        
+        logger.debug(f"Collected {len(logs)} browser log entries from user {user_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Collected {len(logs)} log entries',
+            'processed': len(logs)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error collecting browser logs: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to collect logs'}), 500
+
+@app.route('/api/logs/list', methods=['GET'])
+@api_login_required
+def list_log_files():
+    """List available log files for admin viewing."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        log_dir = log_config['log_dir']
+        log_files = []
+        
+        for log_file in log_dir.glob('*.log'):
+            stat = log_file.stat()
+            log_files.append({
+                'name': log_file.name,
+                'size': stat.st_size,
+                'size_mb': round(stat.st_size / (1024 * 1024), 2),
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                'type': 'main' if 'stemtube.log' in log_file.name else 
+                        'error' if 'error' in log_file.name else
+                        'access' if 'access' in log_file.name else
+                        'database' if 'database' in log_file.name else
+                        'processing' if 'processing' in log_file.name else 'other'
+            })
+        
+        # Sort by modified time, newest first
+        log_files.sort(key=lambda x: x['modified'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'log_files': log_files,
+            'log_directory': str(log_dir)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing log files: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to list log files'}), 500
+
+@app.route('/api/logs/view/<filename>', methods=['GET'])
+@api_login_required
+def view_log_file(filename):
+    """View contents of a specific log file."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        log_dir = log_config['log_dir']
+        log_file = log_dir / filename
+        
+        # Security check - ensure file is in log directory
+        if not str(log_file.resolve()).startswith(str(log_dir.resolve())):
+            return jsonify({'error': 'Invalid file path'}), 400
+        
+        if not log_file.exists():
+            return jsonify({'error': 'Log file not found'}), 404
+        
+        # Get parameters
+        lines = int(request.args.get('lines', 100))  # Default to last 100 lines
+        offset = int(request.args.get('offset', 0))   # Skip lines from end
+        
+        # Read file content
+        with open(log_file, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+        
+        # Calculate slice
+        total_lines = len(all_lines)
+        start_idx = max(0, total_lines - lines - offset)
+        end_idx = total_lines - offset if offset > 0 else total_lines
+        
+        selected_lines = all_lines[start_idx:end_idx]
+        
+        # Parse JSON logs if applicable
+        parsed_logs = []
+        for line in selected_lines:
+            line = line.strip()
+            if line:
+                try:
+                    # Try to parse as JSON
+                    log_entry = json.loads(line)
+                    parsed_logs.append(log_entry)
+                except json.JSONDecodeError:
+                    # Fallback to plain text
+                    parsed_logs.append({'message': line, 'type': 'plain'})
+        
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'total_lines': total_lines,
+            'returned_lines': len(selected_lines),
+            'logs': parsed_logs
+        })
+        
+    except Exception as e:
+        logger.error(f"Error viewing log file {filename}: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to read log file'}), 500
+
+@app.route('/api/logs/download/<filename>', methods=['GET'])
+@api_login_required
+def download_log_file(filename):
+    """Download a log file."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        log_dir = log_config['log_dir']
+        log_file = log_dir / filename
+        
+        # Security check
+        if not str(log_file.resolve()).startswith(str(log_dir.resolve())):
+            return jsonify({'error': 'Invalid file path'}), 400
+        
+        if not log_file.exists():
+            return jsonify({'error': 'Log file not found'}), 404
+        
+        return send_from_directory(log_dir, filename, as_attachment=True)
+        
+    except Exception as e:
+        logger.error(f"Error downloading log file {filename}: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to download log file'}), 500
 
 # ------------------------------------------------------------------
 # Admin Cleanup API Routes
@@ -2254,5 +2561,7 @@ def add_library_extraction_to_user(global_download_id):
 # ------------------------------------------------------------------
 if __name__ == '__main__':
     import socket
-    port = 5001
+    port = 5011
+    logger.info(f"Starting StemTube Web server on port {port}")
+    logger.info("Logging system active - all events will be recorded")
     socketio.run(app, host='0.0.0.0', port=port, debug=True, allow_unsafe_werkzeug=True)
