@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeStretch Test - B.B. King Stems</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .stems {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .stem-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #3a3a3a;
+            border-radius: 4px;
+        }
+        
+        .stem-name {
+            width: 80px;
+            font-weight: bold;
+        }
+        
+        .stem-controls {
+            margin-left: 20px;
+        }
+        
+        .volume-control {
+            margin-left: 10px;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .tempo-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+            border: 1px solid #4CAF50;
+            border-radius: 4px;
+        }
+        
+        .nav a:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .nav a.active {
+            background: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="index.html" class="active">PlaybackRate Test</a>
+            <a href="soundtouch.html">AudioWorklet Test</a>
+            <a href="simple.html">Simple SoundTouch</a>
+            <a href="real.html">Real SoundTouch</a>
+            <a href="bpm.html">BPM Control</a>
+        </div>
+        
+        <h1>🎵 TimeStretch Test - B.B. King</h1>
+        
+        <div class="controls">
+            <h3>Transport Controls</h3>
+            <div class="control-group">
+                <button id="play-btn">▶️ Play</button>
+                <button id="pause-btn">⏸️ Pause</button>
+                <button id="stop-btn">⏹️ Stop</button>
+            </div>
+            
+            <h3>Tempo Control</h3>
+            <div class="control-group">
+                <label>Tempo:</label>
+                <button id="tempo-down">-5%</button>
+                <span class="tempo-display" id="tempo-value">100%</span>
+                <button id="tempo-up">+5%</button>
+                <button id="tempo-reset">Reset</button>
+            </div>
+            
+            <h3>Master Volume</h3>
+            <div class="control-group">
+                <label>Volume:</label>
+                <input type="range" id="master-volume" min="0" max="100" value="50">
+                <span id="volume-value">50%</span>
+            </div>
+        </div>
+        
+        <div class="stems">
+            <h3>Stems</h3>
+            <div class="stem-item">
+                <div class="stem-name">Vocals</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="vocals">🔊</button>
+                    <input type="range" class="volume-control" data-stem="vocals" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Drums</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="drums">🔊</button>
+                    <input type="range" class="volume-control" data-stem="drums" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Bass</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="bass">🔊</button>
+                    <input type="range" class="volume-control" data-stem="bass" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Other</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="other">🔊</button>
+                    <input type="range" class="volume-control" data-stem="other" min="0" max="100" value="100">
+                </div>
+            </div>
+        </div>
+        
+        <div id="status">
+            Status: Initializing...
+        </div>
+    </div>
+
+    <script src="js/simple-mixer.js"></script>
+</body>
+</html>

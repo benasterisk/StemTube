@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundTouch TimeStretch Test - B.B. King</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        
+        .tech-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .tech-info h4 {
+            color: #FFD700;
+            margin-top: 0;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .tempo-controls {
+            background: #3a3a3a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .tempo-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .tempo-buttons {
+            text-align: center;
+        }
+        
+        .tempo-buttons button {
+            font-size: 16px;
+            min-width: 60px;
+        }
+        
+        .stems {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .stem-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #3a3a3a;
+            border-radius: 4px;
+        }
+        
+        .stem-name {
+            width: 80px;
+            font-weight: bold;
+        }
+        
+        .stem-controls {
+            margin-left: 20px;
+        }
+        
+        .volume-control {
+            margin-left: 10px;
+            width: 100px;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .warning {
+            background: #663300;
+            border: 1px solid #ff6600;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #003300;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+            border: 1px solid #4CAF50;
+            border-radius: 4px;
+        }
+        
+        .nav a:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .nav a.active {
+            background: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">PlaybackRate Test</a>
+            <a href="soundtouch.html" class="active">AudioWorklet Test</a>
+            <a href="simple.html">Simple SoundTouch</a>
+            <a href="real.html">Real SoundTouch</a>
+            <a href="bpm.html">BPM Control</a>
+        </div>
+        
+        <div class="header">
+            <h1>🎵 SoundTouch TimeStretch Test</h1>
+            <p>B.B. King - The Thrill Is Gone ft. Tracy Chapman</p>
+        </div>
+        
+        <div class="tech-info">
+            <h4>🔬 Technical Implementation</h4>
+            <p><strong>SoundTouch WASM:</strong> Real-time time-stretching without pitch change</p>
+            <p><strong>AudioWorklet:</strong> High-performance audio processing in separate thread</p>
+            <p><strong>Expected Result:</strong> Tempo changes without affecting vocal pitch</p>
+        </div>
+        
+        <div class="controls">
+            <h3>Transport Controls</h3>
+            <div class="control-group">
+                <button id="play-btn">▶️ Play</button>
+                <button id="pause-btn">⏸️ Pause</button>
+                <button id="stop-btn">⏹️ Stop</button>
+            </div>
+            
+            <div class="tempo-controls">
+                <h3 style="text-align: center; margin-top: 0;">🎛️ Time-Stretching Control</h3>
+                <div class="tempo-display" id="tempo-value">100%</div>
+                <div class="tempo-buttons">
+                    <button id="tempo-down">-5%</button>
+                    <button id="tempo-reset">Reset</button>
+                    <button id="tempo-up">+5%</button>
+                </div>
+                <p style="text-align: center; font-size: 12px; color: #aaa; margin-bottom: 0;">
+                    Range: 25% - 400% | Pitch should remain unchanged
+                </p>
+            </div>
+            
+            <h3>Master Volume</h3>
+            <div class="control-group">
+                <label>Volume:</label>
+                <input type="range" id="master-volume" min="0" max="100" value="50">
+                <span id="volume-value">50%</span>
+            </div>
+        </div>
+        
+        <div class="stems">
+            <h3>Stems Control</h3>
+            <div class="stem-item">
+                <div class="stem-name">Vocals</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="vocals">🔊</button>
+                    <input type="range" class="volume-control" data-stem="vocals" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Drums</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="drums">🔊</button>
+                    <input type="range" class="volume-control" data-stem="drums" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Bass</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="bass">🔊</button>
+                    <input type="range" class="volume-control" data-stem="bass" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Other</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="other">🔊</button>
+                    <input type="range" class="volume-control" data-stem="other" min="0" max="100" value="100">
+                </div>
+            </div>
+        </div>
+        
+        <div id="status">
+            Status: Initializing SoundTouch...
+        </div>
+    </div>
+
+    <script src="js/soundtouch-mixer.js"></script>
+</body>
+</html>

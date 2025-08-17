@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPM SoundTouch Control - B.B. King</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        
+        .tech-info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .tech-info h4 {
+            color: #FFD700;
+            margin-top: 0;
+        }
+        
+        .tech-info .highlight {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .bpm-controls {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .bpm-display {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .current-bpm {
+            font-size: 48px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin: 10px 0;
+        }
+        
+        .original-bpm {
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .bpm-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        .bpm-info span {
+            background: #2a2a2a;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        .bpm-buttons {
+            text-align: center;
+        }
+        
+        .bpm-buttons button {
+            font-size: 16px;
+            min-width: 50px;
+            margin: 0 2px;
+        }
+        
+        .bpm-buttons .fine {
+            background: #2196F3;
+        }
+        
+        .bpm-buttons .fine:hover {
+            background: #1976D2;
+        }
+        
+        .bpm-buttons .coarse {
+            background: #FF9800;
+        }
+        
+        .bpm-buttons .coarse:hover {
+            background: #F57C00;
+        }
+        
+        .bpm-buttons .reset {
+            background: #9C27B0;
+            margin: 0 10px;
+        }
+        
+        .bpm-buttons .reset:hover {
+            background: #7B1FA2;
+        }
+        
+        .realtime-note {
+            background: #003366;
+            border: 1px solid #0066cc;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .stems {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .stem-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #3a3a3a;
+            border-radius: 4px;
+        }
+        
+        .stem-name {
+            width: 80px;
+            font-weight: bold;
+        }
+        
+        .stem-controls {
+            margin-left: 20px;
+        }
+        
+        .volume-control {
+            margin-left: 10px;
+            width: 100px;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+            border: 1px solid #4CAF50;
+            border-radius: 4px;
+        }
+        
+        .nav a:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .nav a.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .bpm-range {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">PlaybackRate Test</a>
+            <a href="soundtouch.html">AudioWorklet Test</a>
+            <a href="simple.html">Simple SoundTouch</a>
+            <a href="real.html">Real SoundTouch</a>
+            <a href="bpm.html" class="active">BPM Control</a>
+        </div>
+        
+        <div class="header">
+            <h1>🎵 BPM-Based SoundTouch Control</h1>
+            <p>B.B. King - The Thrill Is Gone ft. Tracy Chapman</p>
+        </div>
+        
+        <div class="tech-info">
+            <h4>🎼 Musical BPM Control</h4>
+            <p><strong>BPM Detection:</strong> <span class="highlight">Automatic tempo detection from audio</span></p>
+            <p><strong>Precision Control:</strong> ±1 BPM steps for fine musical adjustment</p>
+            <p><strong>Real-time:</strong> Instant BPM changes without interrupting playback</p>
+            <p><strong>Musical Thinking:</strong> Musicians think in BPM, not percentages!</p>
+        </div>
+        
+        <div class="controls">
+            <h3>Transport Controls</h3>
+            <div class="control-group">
+                <button id="play-btn">▶️ Play</button>
+                <button id="pause-btn">⏸️ Pause</button>
+                <button id="stop-btn">⏹️ Stop</button>
+            </div>
+            
+            <div class="bpm-controls">
+                <h3 style="text-align: center; margin-top: 0;">🎛️ BPM Control</h3>
+                
+                <div class="bpm-display">
+                    <div class="original-bpm">
+                        Original: <span id="original-bpm">105</span> BPM
+                    </div>
+                    <div class="current-bpm">
+                        <span id="current-bpm">105</span> BPM
+                    </div>
+                    <div class="bpm-info">
+                        <span>Ratio: <span id="tempo-ratio">×1.000</span></span>
+                        <span>Percentage: <span id="bpm-percentage">100.0%</span></span>
+                    </div>
+                </div>
+                
+                <div class="bpm-buttons">
+                    <button id="bpm-down-5" class="coarse">-5</button>
+                    <button id="bpm-down" class="fine">-1</button>
+                    <button id="bpm-reset" class="reset">Reset</button>
+                    <button id="bpm-up" class="fine">+1</button>
+                    <button id="bpm-up-5" class="coarse">+5</button>
+                </div>
+                
+                <div class="bpm-range">
+                    Range: 50-300 BPM | Blue: ±1 BPM (fine) | Orange: ±5 BPM (coarse)
+                </div>
+                
+                <div class="realtime-note">
+                    🎵 <strong>Pro Tip:</strong> Use ±1 BPM for precise musical adjustments. 
+                    Most songs sound natural within ±10-20 BPM of original tempo.
+                </div>
+            </div>
+            
+            <h3>Master Volume</h3>
+            <div class="control-group">
+                <label>Volume:</label>
+                <input type="range" id="master-volume" min="0" max="100" value="50">
+                <span id="volume-value">50%</span>
+            </div>
+        </div>
+        
+        <div class="stems">
+            <h3>Stems Control</h3>
+            <div class="stem-item">
+                <div class="stem-name">Vocals</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="vocals">🔊</button>
+                    <input type="range" class="volume-control" data-stem="vocals" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Drums</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="drums">🔊</button>
+                    <input type="range" class="volume-control" data-stem="drums" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Bass</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="bass">🔊</button>
+                    <input type="range" class="volume-control" data-stem="bass" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div class="stem-item">
+                <div class="stem-name">Other</div>
+                <div class="stem-controls">
+                    <button class="mute-btn" data-stem="other">🔊</button>
+                    <input type="range" class="volume-control" data-stem="other" min="0" max="100" value="100">
+                </div>
+            </div>
+        </div>
+        
+        <div id="status">
+            Status: Initializing BPM Detection and SoundTouch...
+        </div>
+    </div>
+
+    <script type="module" src="js/bpm-soundtouch.js"></script>
+</body>
+</html>

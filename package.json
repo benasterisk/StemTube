@@ -1,0 +1,27 @@
+{
+  "name": "stemtube",
+  "version": "1.0.0",
+  "description": "**🤖 100% AI-DEVELOPED PROOF OF CONCEPT** - This entire application was created by artificial intelligence as a demonstration of AI development capabilities. The human contributor served solely as a project manager.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benasterisk/StemTube.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Benasterisk/StemTube/issues"
+  },
+  "homepage": "https://github.com/Benasterisk/StemTube#readme",
+  "dependencies": {
+    "@soundtouchjs/audio-worklet": "^0.2.1",
+    "soundtouchjs": "^0.2.1"
+  }
+}
