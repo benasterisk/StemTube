@@ -1140,11 +1140,21 @@ function createDownloadElement(item) {
     const statusClass = getStatusClass(item.status);
     const statusText = getStatusText(item.status);
     
+    // Préparer l'affichage des données d'analyse audio
+    const audioAnalysisDisplay = item.detected_bpm || item.detected_key ? `
+        <div class="audio-analysis-info">
+            ${item.detected_bpm ? `<span class="bpm-info"><i class="fas fa-drum"></i> ${item.detected_bpm} BPM</span>` : ''}
+            ${item.detected_key ? `<span class="key-info"><i class="fas fa-music"></i> ${item.detected_key}</span>` : ''}
+            ${item.analysis_confidence ? `<span class="confidence-info" title="Confiance de l'analyse">${Math.round(item.analysis_confidence * 100)}%</span>` : ''}
+        </div>
+    ` : '';
+    
     downloadElement.innerHTML = `
         <div class="item-header">
             <div class="item-title-container">
                 <input type="checkbox" class="user-item-checkbox" data-video-id="${item.video_id}" value="${item.global_download_id}">
                 <div class="item-title">${item.title}</div>
+                ${audioAnalysisDisplay}
             </div>
             <div class="item-status ${statusClass}">${statusText}</div>
         </div>
@@ -1303,11 +1313,21 @@ function createExtractionElement(item) {
     const statusText = getStatusText(item.status);
     const title = item.title || getFileNameFromPath(item.audio_path);
     
+    // Préparer l'affichage des données d'analyse audio
+    const audioAnalysisDisplay = item.detected_bpm || item.detected_key ? `
+        <div class="audio-analysis-info">
+            ${item.detected_bpm ? `<span class="bpm-info"><i class="fas fa-drum"></i> ${item.detected_bpm} BPM</span>` : ''}
+            ${item.detected_key ? `<span class="key-info"><i class="fas fa-music"></i> ${item.detected_key}</span>` : ''}
+            ${item.analysis_confidence ? `<span class="confidence-info" title="Confiance de l'analyse">${Math.round(item.analysis_confidence * 100)}%</span>` : ''}
+        </div>
+    ` : '';
+    
     extractionElement.innerHTML = `
         <div class="item-header">
             <div class="item-title-container">
                 <input type="checkbox" class="user-item-checkbox" data-video-id="${item.video_id}" value="${item.global_download_id}">
                 <div class="item-title">${title}</div>
+                ${audioAnalysisDisplay}
             </div>
             <div class="item-status ${statusClass}">${statusText}</div>
         </div>

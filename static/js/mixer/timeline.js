@@ -207,10 +207,8 @@ class Timeline {
         const positionPercent = finalPosition / timelineRect.width;
         const finalTime = positionPercent * this.mixer.maxDuration;
         
-        // Mettre à jour la position sans démarrer la lecture
-        this.updatePlayhead(finalTime);
-        this.mixer.currentTime = finalTime;
-        this.mixer.updateTimeDisplay();
+        // Utiliser la méthode seekToPosition pour une navigation propre
+        this.mixer.audioEngine.seekToPosition(finalTime);
         
         // Supprimer les écouteurs d'événements
         document.removeEventListener('mousemove', this.boundMouseMove);

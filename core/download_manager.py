@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 import yt_dlp
+import librosa
+import numpy as np
 
 from .config import get_setting, update_setting, get_ffmpeg_path, DOWNLOADS_DIR, ensure_valid_downloads_directory
 
@@ -48,6 +50,10 @@ class DownloadItem:
     error_message: str = ""
     download_id: str = ""
     cancel_event: threading.Event = None
+    # Audio analysis fields
+    detected_bpm: Optional[float] = None
+    detected_key: Optional[str] = None
+    analysis_confidence: Optional[float] = None
     
     def __post_init__(self):
         """Generate a unique download ID if not provided."""
@@ -202,6 +208,91 @@ class DownloadManager:
             "completed": list(self.completed_downloads.values()),
             "failed": list(self.failed_downloads.values())
         }
+
+    def analyze_audio_with_librosa(self, audio_path: str) -> dict:
+        """Analyse un fichier audio avec Librosa pour détecter BPM et tonalité."""
+        try:
+            print(f"🎵 [DOWNLOAD] Analyse Librosa de: {audio_path}")
+            
+            # Charger l'audio avec librosa (analyse des 60 premières secondes pour la vitesse)
+            y, sr = librosa.load(audio_path, sr=None, duration=60)
+            print(f"   📊 [DOWNLOAD] Audio chargé: {len(y)} échantillons à {sr} Hz")
+            
+            # === DÉTECTION BPM ===
+            print("   🥁 [DOWNLOAD] Détection BPM...")
+            
+            # Méthode 1: Beat tracking de librosa
+            tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+            
+            # Méthode 2: Onsets pour validation 
+            onset_frames = librosa.onset.onset_detect(y=y, sr=sr, wait=1)
+            onset_times = librosa.frames_to_time(onset_frames, sr=sr)
+            
+            # Calcul du tempo depuis les onsets comme validation
+            if len(onset_times) > 1:
+                onset_intervals = np.diff(onset_times)
+                median_interval = np.median(onset_intervals)
+                onset_tempo = 60.0 / median_interval if median_interval > 0 else tempo
+                
+                # Moyenne des deux méthodes si toutes deux sont raisonnables
+                if 60 <= onset_tempo <= 200 and 60 <= tempo <= 200:
+                    final_tempo = (tempo + onset_tempo) / 2
+                elif 60 <= tempo <= 200:
+                    final_tempo = tempo
+                elif 60 <= onset_tempo <= 200:
+                    final_tempo = onset_tempo
+                else:
+                    final_tempo = tempo  # Fallback
+            else:
+                final_tempo = tempo
+                
+            print(f"   ✅ [DOWNLOAD] BPM détecté: {float(final_tempo):.1f}")
+            
+            # === DÉTECTION TONALITÉ ===
+            print("   🎹 [DOWNLOAD] Détection tonalité...")
+            
+            # Extraction des caractéristiques chromatiques
+            chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+            
+            # Moyenne du chroma dans le temps
+            chroma_mean = np.mean(chroma, axis=1)
+            
+            # Trouve la note dominante (index avec la plus haute énergie)
+            dominant_note_idx = int(np.argmax(chroma_mean))
+            
+            # Noms des notes (C=0, C#=1, D=2, etc.)
+            note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+            dominant_note = note_names[dominant_note_idx]
+            
+            # Détection majeur/mineur basée sur les patterns d'accords
+            # Intervalles pour accords majeur et mineur
+            major_intervals = [0, 4, 7]  # Fondamentale, tierce majeure, quinte
+            minor_intervals = [0, 3, 7]  # Fondamentale, tierce mineure, quinte
+            
+            # Calcul de la force pour majeur vs mineur
+            major_strength = sum(chroma_mean[(dominant_note_idx + interval) % 12] for interval in major_intervals)
+            minor_strength = sum(chroma_mean[(dominant_note_idx + interval) % 12] for interval in minor_intervals)
+            
+            mode = "major" if major_strength > minor_strength else "minor"
+            confidence = float(max(major_strength, minor_strength) / np.sum(chroma_mean))
+            
+            detected_key = f"{dominant_note} {mode}"
+            
+            print(f"   ✅ [DOWNLOAD] Tonalité détectée: {detected_key} (confiance: {confidence:.2f})")
+            
+            return {
+                'bpm': round(float(final_tempo), 1),
+                'key': detected_key,
+                'confidence': round(float(confidence), 2)
+            }
+            
+        except Exception as e:
+            print(f"   ❌ [DOWNLOAD] Erreur lors de l'analyse Librosa: {e}")
+            return {
+                'bpm': None,
+                'key': None,
+                'confidence': None
+            }
     
     def _download_worker(self):
         """Worker thread for processing downloads."""
@@ -367,6 +458,30 @@ class DownloadManager:
                     
                     # Attendre un court instant pour que la mise à jour à 100% soit visible
                     time.sleep(0.2)
+                    
+                    # Analyse Librosa pour audio seulement
+                    if item.download_type == DownloadType.AUDIO and item.file_path and os.path.exists(item.file_path):
+                        print(f"🎵 [DOWNLOAD] Démarrage de l'analyse Librosa pour: {item.title}")
+                        analysis_results = self.analyze_audio_with_librosa(item.file_path)
+                        
+                        # Stocker les résultats dans l'item
+                        item.detected_bpm = analysis_results.get('bpm')
+                        item.detected_key = analysis_results.get('key')
+                        item.analysis_confidence = analysis_results.get('confidence')
+                        
+                        print(f"📊 [DOWNLOAD] Analyse terminée: BPM={item.detected_bpm}, Key={item.detected_key}")
+                        
+                        # Mettre à jour la base de données avec les résultats d'analyse
+                        try:
+                            from .downloads_db import update_download_analysis
+                            update_download_analysis(
+                                item.video_id,
+                                item.detected_bpm,
+                                item.detected_key,
+                                item.analysis_confidence
+                            )
+                        except Exception as e:
+                            print(f"⚠️ [DOWNLOAD] Erreur mise à jour BDD analyse: {e}")
                     
                     # Move from active to completed
                     if item.download_id in self.active_downloads:

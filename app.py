@@ -598,12 +598,45 @@ def mixer():
     extraction = se.get_extraction_status(extraction_id)
     
     if extraction:
+        # Live extraction from session
         extraction_info = {
             'extraction_id': extraction.extraction_id,
             'status': extraction.status.value,
             'output_paths': extraction.output_paths or {},
-            'audio_path': extraction.audio_path
+            'audio_path': extraction.audio_path,
+            'detected_bpm': getattr(extraction, 'detected_bpm', None),
+            'detected_key': getattr(extraction, 'detected_key', None),
+            'analysis_confidence': getattr(extraction, 'analysis_confidence', None)
         }
+    else:
+        # Try to get from database for historical extractions
+        try:
+            from core.downloads_db import list_extractions_for
+            db_extractions = list_extractions_for(current_user.id)
+            
+            print(f"[MIXER DEBUG] Looking for extraction_id: {extraction_id}")
+            print(f"[MIXER DEBUG] Found {len(db_extractions)} db extractions")
+            
+            # Find the extraction by ID
+            for db_extraction in db_extractions:
+                db_id = f"download_{db_extraction['id']}"
+                print(f"[MIXER DEBUG] Checking {db_id} vs {extraction_id}")
+                print(f"[MIXER DEBUG] BPM: {db_extraction.get('detected_bpm')}, Key: {db_extraction.get('detected_key')}")
+                
+                if db_id == extraction_id:
+                    extraction_info = {
+                        'extraction_id': extraction_id,
+                        'status': 'completed',
+                        'output_paths': {},  # Will be populated by stems paths if needed
+                        'audio_path': db_extraction['file_path'],
+                        'detected_bpm': db_extraction.get('detected_bpm'),
+                        'detected_key': db_extraction.get('detected_key'), 
+                        'analysis_confidence': db_extraction.get('analysis_confidence')
+                    }
+                    print(f"[MIXER DEBUG] Found match! BPM: {extraction_info['detected_bpm']}, Key: {extraction_info['detected_key']}")
+                    break
+        except Exception as e:
+            print(f"[MIXER] Error loading historical extraction data: {e}")
     
     return render_template('mixer.html', extraction_id=extraction_id, extraction_info=extraction_info)
 
@@ -664,7 +697,10 @@ def get_all_downloads():
                     'eta': item.eta,
                     'file_path': item.file_path,
                     'error_message': item.error_message,
-                    'created_at': item.download_id.split('_')[1] if '_' in item.download_id else str(int(time.time()))  # Extract timestamp from download_id
+                    'created_at': item.download_id.split('_')[1] if '_' in item.download_id else str(int(time.time())),
+                    'detected_bpm': getattr(item, 'detected_bpm', None),
+                    'detected_key': getattr(item, 'detected_key', None),
+                    'analysis_confidence': getattr(item, 'analysis_confidence', None)
                 })
                 live_video_ids.add(item.video_id)
         
@@ -696,7 +732,10 @@ def get_all_downloads():
                 'eta': '',  # No ETA for completed items
                 'file_path': db_item['file_path'],
                 'error_message': '',  # No error for completed items
-                'created_at': db_item['created_at']  # Include creation time
+                'created_at': db_item['created_at'],  # Include creation time
+                'detected_bpm': db_item.get('detected_bpm'),
+                'detected_key': db_item.get('detected_key'),
+                'analysis_confidence': db_item.get('analysis_confidence')
             })
 
         return jsonify(live + history)
@@ -1046,7 +1085,10 @@ def get_all_extractions():
                     'error_message': item.error_message,
                     'output_paths': item.output_paths,
                     'zip_path': item.zip_path,
-                    'created_at': item.extraction_id.split('_')[1] if '_' in item.extraction_id else str(int(time.time()))
+                    'created_at': item.extraction_id.split('_')[1] if '_' in item.extraction_id else str(int(time.time())),
+                    'detected_bpm': getattr(item, 'detected_bpm', None),
+                    'detected_key': getattr(item, 'detected_key', None),
+                    'analysis_confidence': getattr(item, 'analysis_confidence', None)
                 })
                 live_video_model_pairs.add((item.video_id, item.model_name))
         
@@ -1090,7 +1132,10 @@ def get_all_extractions():
                 'error_message': '',  # No error for completed items
                 'output_paths': stems_paths,
                 'zip_path': db_item['stems_zip_path'],
-                'created_at': db_item['extracted_at'] or db_item['created_at']
+                'created_at': db_item['extracted_at'] or db_item['created_at'],
+                'detected_bpm': db_item.get('detected_bpm'),
+                'detected_key': db_item.get('detected_key'),
+                'analysis_confidence': db_item.get('analysis_confidence')
             })
         
         # Combine live and historical extractions
@@ -1108,22 +1153,52 @@ def get_all_extractions():
 @app.route('/api/extractions/<extraction_id>', methods=['GET'])
 @api_login_required
 def get_extraction_status(extraction_id):
+    # For mixer usage: Always get from database since mixer only loads completed extractions
+    from core.downloads_db import get_download_by_id
+    
+    try:
+        # Handle extraction_id format: "download_123" -> "123"
+        download_id = extraction_id
+        if extraction_id.startswith('download_'):
+            download_id = extraction_id.replace('download_', '')
+        
+        download_data = get_download_by_id(current_user.id, download_id)
+        if download_data and download_data.get('extracted'):
+            response_data = {
+                'extraction_id': extraction_id,
+                'audio_path': download_data.get('file_path', ''),
+                'model_name': download_data.get('extraction_model', ''),
+                'status': 'completed',
+                'progress': 100,
+                'detected_bpm': download_data.get('detected_bpm'),
+                'detected_key': download_data.get('detected_key'),
+                'analysis_confidence': download_data.get('analysis_confidence')
+            }
+            print(f"[API] Returning analysis data for {extraction_id}: BPM={response_data['detected_bpm']}, Key={response_data['detected_key']}")
+            return jsonify(response_data)
+            
+    except Exception as e:
+        print(f"Error fetching database extraction: {e}")
+    
+    # Fallback: try session for active extractions (non-mixer usage)
     item = user_session_manager.get_stems_extractor().get_extraction_status(extraction_id)
-    if not item:
-        return jsonify({'error': 'Extraction not found'}), 404
-    return jsonify({
-        'extraction_id': item.extraction_id,
-        'audio_path': item.audio_path,
-        'model_name': item.model_name,
-        'selected_stems': item.selected_stems,
-        'two_stem_mode': item.two_stem_mode,
-        'primary_stem': item.primary_stem,
-        'status': item.status.value,
-        'progress': item.progress,
-        'error_message': item.error_message,
-        'output_paths': item.output_paths,
-        'zip_path': item.zip_path
-    })
+    if item:
+        response_data = {
+            'extraction_id': item.extraction_id,
+            'audio_path': item.audio_path,
+            'model_name': item.model_name,
+            'selected_stems': item.selected_stems,
+            'two_stem_mode': item.two_stem_mode,
+            'primary_stem': item.primary_stem,
+            'status': item.status.value,
+            'progress': item.progress,
+            'error_message': item.error_message,
+            'output_paths': item.output_paths,
+            'zip_path': item.zip_path
+        }
+        return jsonify(response_data)
+    
+    return jsonify({'error': 'Extraction not found'}), 404
 
 @app.route('/api/extractions', methods=['POST'])
 @api_login_required

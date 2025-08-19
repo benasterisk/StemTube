@@ -75,6 +75,48 @@
 .transport-controls {
     display: flex;
     gap: 0.5rem;
+    align-items: center;
+}
+
+.bpm-key-controls {
+    display: flex;
+    gap: 1rem;
+    margin-left: 1rem;
+    align-items: center;
+}
+
+.bpm-control, .key-control {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+}
+
+.control-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.control-btn:hover {
+    background-color: var(--accent-color);
+}
+
+#current-bpm, #current-key {
+    font-weight: bold;
+    min-width: 40px;
+    text-align: center;
+    color: var(--accent-color);
 }
 
 .transport-btn {
@@ -161,78 +203,6 @@
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Pitch and Tempo Controls */
-.pitch-tempo-controls {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    margin: 0 1rem;
-}
-
-.pitch-tempo-controls .control-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.pitch-tempo-controls .control-label {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    min-width: 40px;
-}
-
-.pitch-control, .tempo-control {
-    display: flex;
-    align-items: center;
-    background-color: var(--bg-tertiary);
-    border-radius: var(--border-radius);
-    padding: 0.2rem;
-    gap: 0.2rem;
-}
-
-.control-btn {
-    background-color: transparent;
-    color: var(--text-primary);
-    border: none;
-    border-radius: calc(var(--border-radius) - 2px);
-    width: 24px;
-    height: 24px;
-    font-size: 0.7rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.control-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    transform: scale(1.05);
-}
-
-.control-btn:active {
-    transform: scale(0.95);
-}
-
-.control-btn.reset {
-    color: var(--accent-color);
-}
-
-.control-btn.reset:hover {
-    background-color: rgba(29, 185, 84, 0.2);
-}
-
-.control-value {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    min-width: 32px;
-    text-align: center;
-    padding: 0 0.2rem;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: calc(var(--border-radius) - 2px);
-}
 
 /* Timeline */
 .timeline-container {
@@ -794,6 +764,235 @@
     .control-button:active {
         transform: scale(0.95);
         opacity: 0.8;
+    }
+}
+
+/* =========================== */
+/* CONTRÔLES PITCH & TEMPO     */
+/* =========================== */
+
+#pitch-tempo-controls {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.pitch-tempo-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.pitch-tempo-header h3 {
+    color: var(--accent-color);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.analysis-display {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.original-info {
+    background-color: var(--bg-tertiary);
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--border-radius);
+    display: inline-block;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.control-group {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+
+.control-group h4 {
+    color: var(--success-color);
+    margin: 0 0 0.8rem 0;
+    font-size: 1rem;
+}
+
+.value-display {
+    margin-bottom: 1rem;
+}
+
+.current-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--accent-color);
+    display: block;
+}
+
+.percentage {
+    font-size: 0.9rem;
+    color: var(--warning-color);
+    margin-top: 0.2rem;
+}
+
+.target-key {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+.control-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 50px;
+}
+
+.control-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.control-btn.reset {
+    background-color: var(--warning-color);
+    color: white;
+    border-color: var(--warning-color);
+}
+
+.control-btn.reset:hover {
+    background-color: var(--error-color);
+    border-color: var(--error-color);
+}
+
+.transpose-section {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+}
+
+.transpose-section h4 {
+    color: var(--success-color);
+    margin: 0 0 0.8rem 0;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.transpose-buttons {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.3rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.note-btn {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 0.3rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.note-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.note-btn.sharp {
+    background-color: #333;
+    color: #fff;
+}
+
+.note-btn.sharp:hover {
+    background-color: var(--accent-color);
+}
+
+.status-info {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+    margin-top: 1rem;
+}
+
+/* Mobile responsive pour contrôles pitch/tempo */
+@media (max-width: 768px) {
+    #pitch-tempo-controls {
+        padding: 0.8rem;
+        margin: 0.8rem 0;
+    }
+    
+    .controls-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+    
+    .control-buttons {
+        gap: 0.5rem;
+    }
+    
+    .control-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        min-width: 60px;
+        min-height: 44px;
+    }
+    
+    .transpose-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+    }
+    
+    .note-btn {
+        padding: 0.8rem 0.4rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+    
+    .current-value {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .transpose-buttons {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .control-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .control-btn {
+        width: 100%;
+        max-width: 120px;
     }
 }
 

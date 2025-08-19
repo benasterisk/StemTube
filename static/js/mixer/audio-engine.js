@@ -152,12 +152,6 @@ class AudioEngine {
         stem.source = this.audioContext.createBufferSource();
         stem.source.buffer = stem.buffer;
         
-        // Appliquer les effets pitch/tempo si disponibles
-        if (this.mixer.pitchTempoControl) {
-            const pitchRatio = Math.pow(2, this.mixer.pitchTempoControl.currentPitch / 12);
-            const tempoRatio = this.mixer.pitchTempoControl.currentTempo / 100;
-            stem.source.playbackRate.value = pitchRatio * tempoRatio;
-        }
         
         // Créer le nœud de gain
         stem.gainNode = this.audioContext.createGain();
@@ -167,20 +161,46 @@ class AudioEngine {
         stem.panNode = this.audioContext.createStereoPanner();
         stem.panNode.pan.value = stem.pan;
         
-        // Connecter les nœuds
-        stem.source.connect(stem.gainNode);
-        stem.gainNode.connect(stem.panNode);
-        stem.panNode.connect(this.masterGainNode);
+        // Tenter d'ajouter SoundTouch si disponible
+        if (window.simplePitchTempo && window.simplePitchTempo.workletLoaded) {
+            try {
+                // Créer un nœud SoundTouch pour ce stem
+                stem.soundTouchNode = new AudioWorkletNode(this.audioContext, 'soundtouch-processor');
+                
+                // Appliquer les paramètres actuels
+                const tempoRatio = window.simplePitchTempo.currentBPM / window.simplePitchTempo.originalBPM;
+                const pitchRatio = Math.pow(2, window.simplePitchTempo.currentPitchShift / 12);
+                
+                stem.soundTouchNode.parameters.get('tempo').value = tempoRatio;
+                stem.soundTouchNode.parameters.get('pitch').value = pitchRatio;
+                stem.soundTouchNode.parameters.get('rate').value = 1.0;
+                
+                // Connecter : source -> SoundTouch -> gain -> pan -> master
+                stem.source.connect(stem.soundTouchNode);
+                stem.soundTouchNode.connect(stem.gainNode);
+                stem.gainNode.connect(stem.panNode);
+                stem.panNode.connect(this.masterGainNode);
+                
+                console.log(`[AudioEngine] SoundTouch enabled for ${name}`);
+            } catch (error) {
+                console.warn(`[AudioEngine] SoundTouch failed for ${name}, using fallback:`, error);
+                // Connexion normale en cas d'erreur
+                stem.source.connect(stem.gainNode);
+                stem.gainNode.connect(stem.panNode);
+                stem.panNode.connect(this.masterGainNode);
+            }
+        } else {
+            // Connexion normale sans SoundTouch
+            stem.source.connect(stem.gainNode);
+            stem.gainNode.connect(stem.panNode);
+            stem.panNode.connect(this.masterGainNode);
+        }
         
         // Configurer l'événement de fin de lecture
         stem.source.onended = () => {
             this.handleStemEnded(name);
         };
         
-        // Informer le contrôleur pitch/tempo du nouveau stem
-        if (this.mixer.pitchTempoControl) {
-            this.mixer.pitchTempoControl.initializeStem(name, stem);
-        }
         
         return stem.source;
     }
@@ -267,6 +287,9 @@ class AudioEngine {
         // Mettre à jour l'état de lecture
         this.mixer.isPlaying = true;
         
+        // Mettre à jour l'affichage du bouton
+        this.mixer.updatePlayPauseButton();
+        
         // Démarrer l'animation de la tête de lecture
         this.startPlaybackAnimation();
     }
@@ -300,6 +323,9 @@ class AudioEngine {
         // Mettre à jour l'état de lecture
         this.mixer.isPlaying = false;
         
+        // Mettre à jour l'affichage du bouton
+        this.mixer.updatePlayPauseButton();
+        
         // Arrêter l'animation de la tête de lecture
         this.stopPlaybackAnimation();
         
@@ -328,6 +354,9 @@ class AudioEngine {
         
         // Mettre à jour l'état de lecture
         this.mixer.isPlaying = false;
+        
+        // Mettre à jour l'affichage du bouton
+        this.mixer.updatePlayPauseButton();
         
         // Réinitialiser la position actuelle
         this.mixer.currentTime = 0;
@@ -405,8 +434,8 @@ class AudioEngine {
         
         this.mixer.log(`Navigation vers la position ${newPosition.toFixed(2)}s`);
         
-        // Stocker la position pour l'utiliser après le redémarrage
-        const targetPosition = newPosition;
+        // Sauvegarder l'état de lecture avant l'interruption
+        const wasPlaying = this.mixer.isPlaying;
         
         // Arrêter toutes les sources audio actuelles en désactivant d'abord les événements onended
         Object.values(this.mixer.stems).forEach(stem => {
@@ -424,24 +453,21 @@ class AudioEngine {
             }
         });
         
+        // Mettre à jour immédiatement la position
+        this.mixer.currentTime = newPosition;
+        
         // Mettre à jour la position des têtes de lecture
         this.mixer.timeline.updatePlayhead(newPosition);
         
         // Mettre à jour l'affichage du temps
         this.mixer.updateTimeDisplay();
         
-        // Redémarrer la lecture si nécessaire
-        if (this.mixer.isPlaying) {
-            // Mettre à jour currentTime JUSTE AVANT de démarrer la lecture
-            // pour s'assurer que la valeur n'est pas écrasée par des événements asynchrones
+        // Si on était en train de jouer, reprendre automatiquement
+        if (wasPlaying) {
+            // Redémarrer immédiatement la lecture depuis la nouvelle position
             setTimeout(() => {
-                // Mettre à jour currentTime immédiatement avant de jouer pour éviter toute interférence
-                this.mixer.currentTime = targetPosition;
                 this.play();
-            }, 20);
-        } else {
-            // Si nous ne sommes pas en lecture, mettre à jour la position immédiatement
-            this.mixer.currentTime = targetPosition;
+            }, 10);
         }
     }
     
@@ -555,6 +581,9 @@ class AudioEngine {
     startScratchMode() {
         this.isScratchMode = true;
         
+        // Sauvegarder l'état de lecture avant le scratch
+        this.wasPlayingBeforeScratching = this.mixer.isPlaying;
+        
         // Arrêter la lecture normale si elle est en cours
         if (this.mixer.isPlaying) {
             this.mixer.isPlaying = false;
@@ -583,5 +612,14 @@ class AudioEngine {
     stopScratchMode() {
         this.isScratchMode = false;
         this.mixer.log('Mode scratching désactivé');
+        
+        // Si on était en train de jouer avant le scratch, reprendre la lecture
+        if (this.wasPlayingBeforeScratching) {
+            setTimeout(() => {
+                this.play();
+            }, 50);
+        }
+        
+        this.wasPlayingBeforeScratching = false;
     }
 }

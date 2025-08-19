@@ -25,37 +25,20 @@
                         <i class="fas fa-stop"></i> Stop
                     </button>
                     <div class="time-display" id="time-display">00:00</div>
-                </div>
-                <!-- Pitch and Tempo Controls -->
-                <div class="pitch-tempo-controls">
-                    <div class="control-group">
-                        <span class="control-label">Pitch:</span>
-                        <div class="pitch-control">
-                            <button id="pitch-down" class="control-btn" title="Pitch -1 semitone">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <span class="control-value" id="pitch-value">0</span>
-                            <button id="pitch-up" class="control-btn" title="Pitch +1 semitone">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <button id="pitch-reset" class="control-btn reset" title="Reset pitch">
-                                <i class="fas fa-undo"></i>
-                            </button>
+                    
+                    <!-- Contrôles BPM/Key simples -->
+                    <div class="bpm-key-controls">
+                        <div class="bpm-control">
+                            <span>BPM:</span>
+                            <button id="bpm-down" class="control-btn">-</button>
+                            <span id="current-bpm">120</span>
+                            <button id="bpm-up" class="control-btn">+</button>
                         </div>
-                    </div>
-                    <div class="control-group">
-                        <span class="control-label">Tempo:</span>
-                        <div class="tempo-control">
-                            <button id="tempo-down" class="control-btn" title="Tempo -5%">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <span class="control-value" id="tempo-value">100%</span>
-                            <button id="tempo-up" class="control-btn" title="Tempo +5%">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <button id="tempo-reset" class="control-btn reset" title="Reset tempo">
-                                <i class="fas fa-undo"></i>
-                            </button>
+                        <div class="key-control">
+                            <span>Key:</span>
+                            <button id="key-down" class="control-btn">-</button>
+                            <span id="current-key">C</span>
+                            <button id="key-up" class="control-btn">+</button>
                         </div>
                     </div>
                 </div>
@@ -126,8 +109,8 @@
     <script src="/static/js/mixer/audio-engine.js"></script>
     <script src="/static/js/mixer/mobile-audio-engine.js"></script>
     <script src="/static/js/mixer/mobile-debug-fix.js"></script>
-    <script src="/static/js/mixer/pitch-tempo-control.js"></script>
     <script src="/static/js/mixer/mixer-persistence.js"></script>
+    <script src="/static/js/mixer/simple-pitch-tempo.js"></script>
     <script src="/static/js/mixer/core.js"></script>
 </body>
 </html>

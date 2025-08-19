@@ -2148,6 +2148,77 @@ body.light-theme .status-badge.not-extracted {
     flex: 1;
 }
 
+/* =========================== */
+/* AFFICHAGE ANALYSE AUDIO     */
+/* =========================== */
+
+.audio-analysis-info {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.bpm-info, .key-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background-color: var(--bg-tertiary);
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.bpm-info {
+    color: var(--success-color);
+    border-color: var(--success-color);
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.key-info {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    background-color: rgba(33, 150, 243, 0.1);
+}
+
+.confidence-info {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    cursor: help;
+}
+
+.bpm-info i, .key-info i {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+/* Responsive pour analyse audio */
+@media (max-width: 768px) {
+    .audio-analysis-info {
+        gap: 0.5rem;
+        margin-top: 0.3rem;
+    }
+    
+    .bpm-info, .key-info {
+        font-size: 0.8rem;
+        padding: 0.15rem 0.5rem;
+    }
+    
+    .confidence-info {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.35rem;
+    }
+}
+
 .loading-row td {
     text-align: center;
     padding: var(--spacing-lg);

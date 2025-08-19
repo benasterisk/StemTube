@@ -74,7 +74,11 @@ def _add_extraction_fields_if_missing(conn):
         ("stems_paths", "TEXT"),
         ("stems_zip_path", "TEXT"),
         ("extracted_at", "TIMESTAMP"),
-        ("extracting", "BOOLEAN DEFAULT 0")
+        ("extracting", "BOOLEAN DEFAULT 0"),
+        # Audio analysis fields
+        ("detected_bpm", "REAL"),
+        ("detected_key", "TEXT"),
+        ("analysis_confidence", "REAL")
     ]
     
     for table_name in ["global_downloads", "user_downloads"]:
@@ -160,6 +164,28 @@ def add_or_update(user_id, meta):
         
         # Return the global_download_id for use in WebSocket events
         return global_download_id
+
+def update_download_analysis(video_id, detected_bpm, detected_key, analysis_confidence):
+    """Mettre à jour les résultats d'analyse audio pour un download."""
+    with _conn() as conn:
+        print(f"[DB DEBUG] Updating analysis for video_id='{video_id}': BPM={detected_bpm}, Key={detected_key}")
+        
+        # Mettre à jour la table global_downloads
+        conn.execute("""
+            UPDATE global_downloads 
+            SET detected_bpm=?, detected_key=?, analysis_confidence=?
+            WHERE video_id=?
+        """, (detected_bpm, detected_key, analysis_confidence, video_id))
+        
+        # Mettre à jour toutes les entrées user_downloads pour ce video_id
+        conn.execute("""
+            UPDATE user_downloads 
+            SET detected_bpm=?, detected_key=?, analysis_confidence=?
+            WHERE video_id=?
+        """, (detected_bpm, detected_key, analysis_confidence, video_id))
+        
+        conn.commit()
+        print(f"[DB DEBUG] Analysis updated successfully for video_id='{video_id}'")
 
 def find_global_download(video_id, media_type, quality):
     """Check if a download already exists globally."""

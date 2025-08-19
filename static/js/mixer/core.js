@@ -85,8 +85,8 @@ class StemMixer {
         // Initialiser le gestionnaire de contrôles de piste
         this.trackControls = new TrackControls(this);
         
-        // Initialiser le contrôle pitch/tempo
-        this.pitchTempoControl = new PitchTempoControl(this);
+        // Contrôles pitch/tempo simples gérés par SimplePitchTempoController
+        this.pitchTempoControls = null;
         
         // Logger l'initialisation des modules
         console.log('[StemMixer] Modules initialisés');
@@ -117,6 +117,10 @@ class StemMixer {
             
             // Initialiser le contexte audio
             await this.audioEngine.initAudioContext();
+            
+            // Exposer le contexte audio globalement pour SimplePitchTempo
+            window.audioContext = this.audioEngine.audioContext;
+            window.dispatchEvent(new CustomEvent('audioContextReady'));
             
             // Configurer les écouteurs d'événements pour les contrôles
             this.setupEventListeners();
@@ -327,10 +331,86 @@ class StemMixer {
             // Rendre les formes d'onde immédiatement après le chargement des stems
             this.waveform.updateAllWaveforms();
             
+            // Initialiser les contrôles pitch/tempo avec les données d'analyse
+            await this.loadAnalysisDataAndInitControls();
+            
             this.log('Tous les stems ont été chargés avec succès');
         } catch (error) {
             this.log(`Erreur lors du chargement des stems: ${error.message}`);
             throw error;
+        }
+    }
+    
+    /**
+     * Charger les données d'analyse depuis la base de données et initialiser les contrôles
+     */
+    async loadAnalysisDataAndInitControls() {
+        try {
+            this.log('Chargement des données d\'analyse audio...');
+            
+            let analysisData = null;
+            
+            // Essayer de récupérer depuis EXTRACTION_INFO (données globales)
+            if (window.EXTRACTION_INFO) {
+                analysisData = {
+                    detected_bpm: window.EXTRACTION_INFO.detected_bpm || null,
+                    detected_key: window.EXTRACTION_INFO.detected_key || null,
+                    analysis_confidence: window.EXTRACTION_INFO.analysis_confidence || null
+                };
+                this.log('Données d\'analyse récupérées depuis EXTRACTION_INFO');
+            }
+            
+            // Si pas de données dans EXTRACTION_INFO, essayer l'API
+            if (!analysisData || (!analysisData.detected_bpm && !analysisData.detected_key)) {
+                try {
+                    const response = await fetch(`/api/extractions/${this.extractionId}`);
+                    if (response.ok) {
+                        const extractionData = await response.json();
+                        analysisData = {
+                            detected_bpm: extractionData.detected_bpm || null,
+                            detected_key: extractionData.detected_key || null,
+                            analysis_confidence: extractionData.analysis_confidence || null
+                        };
+                        this.log('Données d\'analyse récupérées depuis API');
+                    }
+                } catch (apiError) {
+                    this.log(`API non disponible: ${apiError.message}`);
+                }
+            }
+            
+            // Si toujours pas de données, utiliser les valeurs par défaut
+            if (!analysisData || (!analysisData.detected_bpm && !analysisData.detected_key)) {
+                analysisData = {
+                    detected_bpm: 120,
+                    detected_key: 'C major',
+                    analysis_confidence: 0.0
+                };
+                this.log('Utilisation des valeurs par défaut');
+            }
+            
+            this.log(`Données d'analyse finales - BPM: ${analysisData.detected_bpm}, Key: ${analysisData.detected_key}`);
+            
+            // Émettre un événement pour SimplePitchTempo
+            window.dispatchEvent(new CustomEvent('stemLoaded', {
+                detail: analysisData
+            }));
+            
+            this.log('Données d\'analyse transmises aux contrôles');
+        } catch (error) {
+            this.log(`Erreur lors du chargement des données d'analyse: ${error.message}`);
+            
+            // Fallback avec valeurs par défaut
+            const defaultAnalysisData = {
+                detected_bpm: 120,
+                detected_key: 'C major',
+                analysis_confidence: 0.0
+            };
+            
+            window.dispatchEvent(new CustomEvent('stemLoaded', {
+                detail: defaultAnalysisData
+            }));
+            
+            this.log('Contrôles initialisés avec valeurs par défaut après erreur');
         }
     }
     
@@ -377,6 +457,9 @@ class StemMixer {
         this.log('Démarrage de la lecture');
         this.audioEngine.play();
         this.updatePlayPauseButton();
+        
+        // Émettre événement pour SimplePitchTempo
+        window.dispatchEvent(new CustomEvent('playbackStarted'));
     }
     
     /**
@@ -526,4 +609,6 @@ class StemMixer {
 // Démarrer le mixeur lorsque la page est chargée
 document.addEventListener('DOMContentLoaded', () => {
     window.stemMixer = new StemMixer();
+    // Exposer le mixer globalement pour SimplePitchTempo
+    window.mixer = window.stemMixer;
 });
