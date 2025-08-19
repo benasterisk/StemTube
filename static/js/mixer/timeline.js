@@ -12,6 +12,7 @@ class Timeline {
         this.mixer = mixer;
         this.markerInterval = 5; // Intervalle entre les marqueurs de temps en secondes
         this.isDragging = false; // Pour suivre l'état de glissement
+        this.justFinishedDragging = false; // Pour éviter les conflits click/drag
         
         // Lier les méthodes pour pouvoir les utiliser comme gestionnaires d'événements
         this.boundMouseMove = this.handleMouseMove.bind(this);
@@ -122,8 +123,10 @@ class Timeline {
      * @param {Event} event - Événement de clic
      */
     handleTimelineClick(event) {
-        // Cette méthode reste inchangée car elle gère les clics simples
-        // Le scratching sera géré par les nouveaux gestionnaires d'événements
+        // Ignorer si nous venons de terminer un drag
+        if (this.justFinishedDragging) {
+            return;
+        }
         
         // Vérifier si l'élément de timeline existe
         if (!this.mixer.elements.timeline) return;
@@ -195,6 +198,9 @@ class Timeline {
         // Vérifier si nous étions en mode glissement
         if (!this.isDragging) return;
         
+        // Marquer comme terminé pour éviter le conflit avec le clic
+        const wasDragging = this.isDragging;
+        
         // Désactiver le mode glissement
         this.isDragging = false;
         
@@ -213,6 +219,12 @@ class Timeline {
         // Supprimer les écouteurs d'événements
         document.removeEventListener('mousemove', this.boundMouseMove);
         document.removeEventListener('mouseup', this.boundMouseUp);
+        
+        // Marquer que nous venons de terminer un drag pour éviter le conflit avec le clic
+        this.justFinishedDragging = true;
+        setTimeout(() => {
+            this.justFinishedDragging = false;
+        }, 100);
     }
     
     /**

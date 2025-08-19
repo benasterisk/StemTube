@@ -18,6 +18,8 @@ class AudioEngine {
         this.isPausing = false;
         this.isScratchMode = false;  // Nouvel état pour le mode scratching
         this.scratchBufferDuration = 0.1;  // Durée de chaque segment de scratch en secondes
+        this.lastScratchTime = 0;  // Pour le throttling du scratch
+        this.scratchThrottle = 50;  // Minimum 50ms entre les scratch segments
     }
     
     /**
@@ -181,7 +183,7 @@ class AudioEngine {
                 stem.gainNode.connect(stem.panNode);
                 stem.panNode.connect(this.masterGainNode);
                 
-                console.log(`[AudioEngine] SoundTouch enabled for ${name}`);
+                // console.log(`[AudioEngine] SoundTouch enabled for ${name}`);
             } catch (error) {
                 console.warn(`[AudioEngine] SoundTouch failed for ${name}, using fallback:`, error);
                 // Connexion normale en cas d'erreur
@@ -262,7 +264,7 @@ class AudioEngine {
         });
         
         // Log pour débogage
-        this.mixer.log(`Démarrage de la lecture à partir de la position ${this.mixer.currentTime.toFixed(2)}s`);
+        // this.mixer.log(`Démarrage de la lecture à partir de la position ${this.mixer.currentTime.toFixed(2)}s`);
         
         // Démarrer la lecture de chaque stem actif
         Object.entries(this.mixer.stems).forEach(([name, stem]) => {
@@ -276,7 +278,7 @@ class AudioEngine {
                         // Utiliser un offset exact pour commencer à la bonne position
                         const offset = Math.min(this.mixer.currentTime, stem.buffer.duration);
                         stem.source.start(0, offset);
-                        this.mixer.log(`Lecture du stem ${name} à partir de la position ${offset.toFixed(2)}s`);
+                        // this.mixer.log(`Lecture du stem ${name} à partir de la position ${offset.toFixed(2)}s`);
                     } catch (e) {
                         this.mixer.log(`Erreur lors du démarrage du stem ${name}: ${e.message}`);
                     }
@@ -432,7 +434,7 @@ class AudioEngine {
         // Limiter la position entre 0 et la durée maximale
         const newPosition = Math.max(0, Math.min(position, this.mixer.maxDuration));
         
-        this.mixer.log(`Navigation vers la position ${newPosition.toFixed(2)}s`);
+        // this.mixer.log(`Navigation vers la position ${newPosition.toFixed(2)}s`);
         
         // Sauvegarder l'état de lecture avant l'interruption
         const wasPlaying = this.mixer.isPlaying;
@@ -503,7 +505,7 @@ class AudioEngine {
         // Limiter la position entre 0 et la durée maximale
         const newPosition = Math.max(0, Math.min(position, this.mixer.maxDuration));
         
-        // Mettre à jour la position des têtes de lecture
+        // Mettre à jour la position des têtes de lecture (always update visuals)
         this.mixer.timeline.updatePlayhead(newPosition);
         
         // Mettre à jour la position actuelle
@@ -512,64 +514,59 @@ class AudioEngine {
         // Mettre à jour l'affichage du temps
         this.mixer.updateTimeDisplay();
         
-        // Arrêter toutes les sources audio actuelles
-        Object.values(this.mixer.stems).forEach(stem => {
-            if (stem.source) {
-                // Supprimer l'événement onended
-                stem.source.onended = null;
-                
-                try {
-                    stem.source.stop();
-                } catch (e) {
-                    // Ignorer les erreurs si la source est déjà arrêtée
-                }
-                
-                stem.source = null;
-            }
-        });
-        
-        // Jouer un court segment audio à cette position
-        this.playScratchSegment(newPosition);
+        // Throttled audio feedback for scratching
+        const now = Date.now();
+        if (now - this.lastScratchTime >= this.scratchThrottle) {
+            this.lastScratchTime = now;
+            // Play lightweight scratch segment
+            this.playScratchSegment(newPosition);
+        }
         
         return newPosition;
     }
     
     /**
-     * Joue un court segment audio pour l'effet de scratching
+     * Joue un court segment audio pour l'effet de scratching (LIGHTWEIGHT VERSION)
      * @param {number} position - Position en secondes
      */
     playScratchSegment(position) {
         Object.entries(this.mixer.stems).forEach(([name, stem]) => {
             if (stem.active && stem.buffer) {
-                // Créer de nouveaux nœuds audio
-                this.setupAudioNodes(name);
+                // LIGHTWEIGHT: Create simple audio nodes without SoundTouch for scratching
+                const source = this.audioContext.createBufferSource();
+                source.buffer = stem.buffer;
                 
-                if (stem.source) {
-                    try {
-                        // Calculer l'offset en fonction de la position
-                        const offset = Math.min(position, stem.buffer.duration);
-                        
-                        // Définir quand la source doit s'arrêter (durée très courte)
-                        stem.source.onended = null; // Éviter les rappels d'événements
-                        
-                        // Démarrer la lecture avec un offset et une durée fixe
-                        stem.source.start(0, offset, this.scratchBufferDuration);
-                        
-                        // Arrêter la source après une courte durée
-                        setTimeout(() => {
-                            if (stem.source) {
-                                stem.source.onended = null;
-                                try {
-                                    stem.source.stop();
-                                } catch (e) {
-                                    // Ignorer les erreurs
-                                }
-                            }
-                        }, this.scratchBufferDuration * 900); // Légèrement plus court que la durée réelle
-                        
-                    } catch (e) {
-                        this.mixer.log(`Erreur lors du scratching du stem ${name}: ${e.message}`);
-                    }
+                // Simple gain and pan nodes (no SoundTouch during scratch)
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.value = stem.muted ? 0 : stem.volume;
+                
+                const panNode = this.audioContext.createStereoPanner();
+                panNode.pan.value = stem.pan;
+                
+                // Simple connection chain for scratch
+                source.connect(gainNode);
+                gainNode.connect(panNode);
+                panNode.connect(this.masterGainNode);
+                
+                try {
+                    // Calculer l'offset en fonction de la position
+                    const offset = Math.min(position, stem.buffer.duration);
+                    const scratchDuration = 0.15; // 150ms
+                    
+                    // Démarrer la lecture avec un offset et une durée fixe
+                    source.start(0, offset, scratchDuration);
+                    
+                    // Auto-cleanup
+                    setTimeout(() => {
+                        try {
+                            source.stop();
+                        } catch (e) {
+                            // Ignorer les erreurs
+                        }
+                    }, scratchDuration * 1000 - 10);
+                    
+                } catch (e) {
+                    console.warn(`Scratch error for ${name}:`, e.message);
                 }
             }
         });
@@ -584,12 +581,12 @@ class AudioEngine {
         // Sauvegarder l'état de lecture avant le scratch
         this.wasPlayingBeforeScratching = this.mixer.isPlaying;
         
-        // Arrêter la lecture normale si elle est en cours
+        // Arrêter la lecture normale si elle est en cours (preserve SoundTouch nodes)
         if (this.mixer.isPlaying) {
             this.mixer.isPlaying = false;
             this.stopPlaybackAnimation();
             
-            // Arrêter toutes les sources audio actuelles
+            // Arrêter toutes les sources audio actuelles (SoundTouch will be recreated on resume)
             Object.values(this.mixer.stems).forEach(stem => {
                 if (stem.source) {
                     stem.source.onended = null;
@@ -603,7 +600,8 @@ class AudioEngine {
             });
         }
         
-        this.mixer.log('Mode scratching activé');
+        // Reset scratch throttling
+        this.lastScratchTime = 0;
     }
     
     /**
@@ -611,13 +609,16 @@ class AudioEngine {
      */
     stopScratchMode() {
         this.isScratchMode = false;
-        this.mixer.log('Mode scratching désactivé');
         
-        // Si on était en train de jouer avant le scratch, reprendre la lecture
+        // Clear any pending scratch audio (lightweight cleanup)
+        // Note: scratch segments auto-cleanup, no need for heavy operations here
+        
+        // Si on était en train de jouer avant le scratch, reprendre la lecture avec SoundTouch
         if (this.wasPlayingBeforeScratching) {
+            // Small delay to ensure smooth transition
             setTimeout(() => {
-                this.play();
-            }, 50);
+                this.play(); // This will recreate SoundTouch nodes properly
+            }, 30);
         }
         
         this.wasPlayingBeforeScratching = false;

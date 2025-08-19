@@ -152,7 +152,7 @@ class SimplePitchTempoController {
         const tempoRatio = this.currentBPM / this.originalBPM;
         const pitchRatio = Math.pow(2, this.currentPitchShift / 12);
         
-        console.log(`[SimplePitchTempo] Applying effects - Tempo: ${tempoRatio.toFixed(3)}, Pitch: ${pitchRatio.toFixed(3)}`);
+        // console.log(`[SimplePitchTempo] Applying effects - Tempo: ${tempoRatio.toFixed(3)}, Pitch: ${pitchRatio.toFixed(3)}`);
         
         // Accéder aux stems du mixer principal si disponible
         if (window.mixer && window.mixer.stems) {
@@ -162,7 +162,7 @@ class SimplePitchTempoController {
                         stemData.soundTouchNode.parameters.get('tempo').value = tempoRatio;
                         stemData.soundTouchNode.parameters.get('pitch').value = pitchRatio;
                         stemData.soundTouchNode.parameters.get('rate').value = 1.0;
-                        console.log(`[SimplePitchTempo] Updated ${stemName}: tempo=${tempoRatio.toFixed(3)}, pitch=${pitchRatio.toFixed(3)}`);
+                        // console.log(`[SimplePitchTempo] Updated ${stemName}: tempo=${tempoRatio.toFixed(3)}, pitch=${pitchRatio.toFixed(3)}`);
                     } catch (error) {
                         console.warn(`[SimplePitchTempo] Failed to update ${stemName}:`, error);
                     }
