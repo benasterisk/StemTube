@@ -112,6 +112,21 @@
     background-color: var(--accent-color);
 }
 
+.control-btn.reset-btn {
+    background-color: var(--btn-secondary);
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-left: 0.3rem;
+    border: 1px solid var(--border-color);
+}
+
+.control-btn.reset-btn:hover {
+    background-color: var(--accent-primary);
+    color: var(--text-primary);
+    transform: rotate(180deg);
+    border-color: var(--accent-primary);
+}
+
 #current-bpm, #current-key {
     font-weight: bold;
     min-width: 40px;
