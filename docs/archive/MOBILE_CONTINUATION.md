@@ -1,47 +1,47 @@
-# 🔄 CONTINUATION - Interface Mobile StemTube
+# 🔄 CONTINUATION - StemTube Mobile Interface
 
 **Date**: 2025-01-05
-**Contexte**: Migration Windows → Ubuntu WSL
-**Objectif**: Finaliser interface mobile avec 4 stems indépendants synchronisés
+**Context**: Windows -> Ubuntu WSL migration
+**Goal**: Finish mobile interface with 4 synchronized independent stems
 
 ---
 
-## 🚨 PROBLÈME ACTUEL
+## 🚨 CURRENT ISSUE
 
-**Erreur de syntaxe JavaScript** dans `static/js/mobile-app.js` ligne 63
+**JavaScript syntax error** in `static/js/mobile-app.js` line 63
 
 ```javascript
-// ERREUR LIGNE 60-63
+// ERROR LINE 60-63
 initSocket() {
     this.socket = io();
     this.socket.on('connect', () => {
         console.log('[Socket] Connected');
-    })  // ← MANQUE });
+    })  // <- MISSING });
 
 // Calculate effective volume based on mute/solo
-getEffectiveVolume(stemName) {  // ← LIGNE 63: fonction hors classe
+getEffectiveVolume(stemName) {  // <- LINE 63: function outside class
 ```
 
-**Cause**: Script Python `fix-mobile-stems.py` a mal inséré `getEffectiveVolume()` au mauvais endroit (dans constructor au lieu d'après `applyMixerState()`)
+**Cause**: Python script `fix-mobile-stems.py` inserted `getEffectiveVolume()` in the wrong place (inside constructor instead of after `applyMixerState()`).
 
 ---
 
-## ✅ CE QUI EST DÉJÀ FAIT
+## ✅ WHAT IS ALREADY DONE
 
-### 1. **Corrections Fonctionnelles (5/6 terminées)**
+### 1. **Functional Fixes (5/6 done)**
 
-| Correction | Statut | Détails |
+| Fix | Status | Details |
 |------------|--------|---------|
-| ✅ Volume/Pan iOS | **FAIT** | Web Audio API + GainNode/StereoPanner |
-| ✅ Boutons Solo/Mute | **FAIT** | Texte "MUTE"/"SOLO" + logique complète |
-| ✅ Timeline Chords | **FAIT** | Grille horizontale + barres mesure + playhead |
-| ✅ Génération Lyrics | **FAIT** | Bouton connecté API `/api/extractions/<id>/lyrics/generate` |
-| ⚠️ **Chargement 4 stems** | **95%** | Code écrit, erreur syntaxe à corriger |
-| ⏳ Pitch/Tempo | **70%** | SoundTouch intégré, sliders connectés |
+| ✅ Volume/Pan iOS | **DONE** | Web Audio API + GainNode/StereoPanner |
+| ✅ Solo/Mute buttons | **DONE** | "MUTE"/"SOLO" text + full logic |
+| ✅ Timeline Chords | **DONE** | Horizontal grid + measure bars + playhead |
+| ✅ Lyrics Generation | **DONE** | Button wired to API `/api/extractions/<id>/lyrics/generate` |
+| ⚠️ **4-stem loading** | **95%** | Code written, syntax error to fix |
+| ⏳ Pitch/Tempo | **70%** | SoundTouch integrated, sliders connected |
 
-### 2. **Architecture Implémentée**
+### 2. **Implemented Architecture**
 
-**Nouveaux objets dans constructor**:
+**New objects in constructor**:
 ```javascript
 this.stemBuffers = {};    // { vocals: {buffer, duration}, ... }
 this.stemGains = {};      // { vocals: GainNode, ... }
@@ -50,46 +50,46 @@ this.stemSources = {};    // { vocals: AudioBufferSourceNode, ... }
 this.playbackStartTime = 0;
 ```
 
-**Nouvelles fonctions**:
-- ✅ `loadStemsForIOS()` - Charge 4 stems via `fetch()` + `decodeAudioData()`
-- ✅ `playPlayback()` - Démarre tous les stems EXACTEMENT au même moment
-- ✅ `pausePlayback()` - Stoppe tous les sources
-- ✅ `startTimeUpdate()` - Utilise `audioContext.currentTime` pour synchro
-- ⚠️ `getEffectiveVolume()` - **À DÉPLACER** (mal placée)
+**New functions**:
+- ✅ `loadStemsForIOS()` - Loads 4 stems via `fetch()` + `decodeAudioData()`
+- ✅ `playPlayback()` - Starts all stems at EXACTLY the same time
+- ✅ `pausePlayback()` - Stops all sources
+- ✅ `startTimeUpdate()` - Uses `audioContext.currentTime` for sync
+- ⚠️ `getEffectiveVolume()` - **MOVE IT** (wrong placement)
 
 ---
 
-## 🔧 TÂCHES À ACCOMPLIR (Ubuntu)
+## 🔧 TASKS TO COMPLETE (Ubuntu)
 
-### ✅ **TÂCHE 1: Corriger erreur syntaxe (5 min)**
+### ✅ **TASK 1: Fix syntax error (5 min)**
 
-**Fichier**: `static/js/mobile-app.js`
+**File**: `static/js/mobile-app.js`
 
-#### Étape 1.1: Fermer `initSocket()` proprement
+#### Step 1.1: Close `initSocket()` properly
 
 ```bash
-# Ligne ~60-70, chercher:
+# Around lines ~60-70, search:
 grep -n "initSocket()" static/js/mobile-app.js
 
-# Corriger (ajouter }; manquant après socket.on):
+# Fix (add missing }); after socket.on):
 ```
 
-**AVANT** (ligne 60-63):
+**BEFORE** (line 60-63):
 ```javascript
 initSocket() {
     this.socket = io();
     this.socket.on('connect', () => {
         console.log('[Socket] Connected');
-    })  // ← ERREUR: manque });
+    })  // <- ERROR: missing });
 ```
 
-**APRÈS**:
+**AFTER**:
 ```javascript
 initSocket() {
     this.socket = io();
     this.socket.on('connect', () => {
         console.log('[Socket] Connected');
-    });  // ← CORRIGÉ
+    });  // <- FIXED
 
     this.socket.on('download_complete', (data) => {
         console.log('[Socket] Download complete:', data);
@@ -103,24 +103,24 @@ initSocket() {
 }
 ```
 
-#### Étape 1.2: Supprimer `getEffectiveVolume()` mal placée
+#### Step 1.2: Remove mis-placed `getEffectiveVolume()`
 
 ```bash
-# Trouver la ligne où elle est MAL placée (ligne ~63-78)
+# Find where it is wrongly placed (line ~63-78)
 grep -n "getEffectiveVolume" static/js/mobile-app.js
 
-# Supprimer les lignes 63-78 (environ)
-# Utilise Edit tool pour supprimer cette section
+# Delete lines ~63-78
+# Use an editor to remove this section
 ```
 
-#### Étape 1.3: Ajouter `getEffectiveVolume()` au BON endroit
+#### Step 1.3: Add `getEffectiveVolume()` to the RIGHT place
 
 ```bash
-# Chercher applyMixerState() (ligne ~650-660)
+# Find applyMixerState() (line ~650-660)
 grep -n "applyMixerState()" static/js/mobile-app.js
 ```
 
-**Ajouter APRÈS `applyMixerState()}` (vers ligne 660)**:
+**Add AFTER `applyMixerState()}` (around line 660):**
 
 ```javascript
 applyMixerState() {
@@ -132,7 +132,7 @@ applyMixerState() {
     });
 }
 
-// ← AJOUTER ICI
+// <- ADD HERE
 getEffectiveVolume(stemName) {
     const track = this.tracks[stemName];
     if (!track) return 0;
@@ -148,24 +148,24 @@ getEffectiveVolume(stemName) {
 }
 ```
 
-#### Étape 1.4: Vérifier syntaxe
+#### Step 1.4: Verify syntax
 
 ```bash
 node --check static/js/mobile-app.js
-# Doit retourner: (rien) = succès
+# Should return: (nothing) = success
 ```
 
 ---
 
-### ✅ **TÂCHE 2: Initialiser variables dans constructor (3 min)**
+### ✅ **TASK 2: Initialize variables in constructor (3 min)**
 
-**Fichier**: `static/js/mobile-app.js`
+**File**: `static/js/mobile-app.js`
 
 ```bash
 grep -n "constructor()" static/js/mobile-app.js
 ```
 
-**Vérifier que ces variables EXISTENT** (lignes ~30-35):
+**Verify these variables EXIST** (lines ~30-35):
 
 ```javascript
 // Pitch/Tempo control state
@@ -182,11 +182,11 @@ this.stemSources = {};
 this.playbackStartTime = 0;
 ```
 
-**Si manquant**, ajouter après `this.animationFrame = null;` (ligne ~30)
+**If missing**, add after `this.animationFrame = null;` (line ~30).
 
 ---
 
-### ✅ **TÂCHE 3: Tester chargement des stems (10 min)**
+### ✅ **TASK 3: Test stem loading (10 min)**
 
 ```bash
 cd /home/michael/StemTube-dev
@@ -194,14 +194,14 @@ source venv/bin/activate
 python app.py
 ```
 
-**Sur mobile** (`http://localhost:5011/mobile`):
+**On mobile** (`http://localhost:5011/mobile`):
 
-1. **Ouvrir console navigateur** (Chrome/Safari DevTools)
-2. **Cliquer sur un item** avec "Stems Available"
-3. **Vérifier console**:
+1. **Open browser console** (Chrome/Safari DevTools)
+2. **Click an item** with "Stems Available"
+3. **Check console**:
 
 ```javascript
-// ✅ DOIT AFFICHER:
+// ✅ SHOULD SHOW:
 [Mixer] Loading 4 separate stems with Web Audio API
 [Mixer] Parsed stems_paths: {vocals: "...", drums: "...", ...}
 [Mixer] Loading vocals from /api/stream-audio?file_path=...
@@ -212,70 +212,70 @@ python app.py
 [Mixer] All stems loaded, duration: 234.50s
 ```
 
-**Si erreurs**:
-- ❌ `Failed to load`: Vérifier chemins stems dans DB (`stems_paths` JSON)
-- ❌ `No stems paths found`: Item n'a pas de stems extraits
-- ❌ `AudioContext suspended`: Toucher écran une fois (iOS)
+**If errors**:
+- ❌ `Failed to load`: verify stem paths in DB (`stems_paths` JSON)
+- ❌ `No stems paths found`: item has no extracted stems
+- ❌ `AudioContext suspended`: tap screen once (iOS)
 
 ---
 
-### ✅ **TÂCHE 4: Tester synchronisation lecture (10 min)**
+### ✅ **TASK 4: Test playback sync (10 min)**
 
-**Test 1: Lecture basique**
+**Test 1: Basic playback**
 
-1. **Cliquer Play**
-2. **Vérifier console**:
+1. **Click Play**
+2. **Check console**:
 
 ```javascript
-// ✅ DOIT AFFICHER:
+// ✅ SHOULD SHOW:
 [Audio] Playing from 0.00s
 ```
 
-3. **Écouter** - Les 4 stems doivent jouer **PARFAITEMENT synchronisés**
+3. **Listen** - All 4 stems must play **perfectly synchronized**
 
 **Test 2: Pause/Resume**
 
-1. **Pause** après 10 secondes
-2. **Resume** - Doit reprendre exactement au même endroit
+1. **Pause** after 10 seconds
+2. **Resume** - Should resume at the exact same spot
 3. **Console**:
 
 ```javascript
 [Audio] Paused
-[Audio] Playing from 10.23s  // ← Position exacte
+[Audio] Playing from 10.23s  // <- exact position
 ```
 
-**Test 3: Seek (barre de progression)**
+**Test 3: Seek (progress bar)**
 
-1. **Cliquer** sur barre progression à 50%
-2. **Play** - Tous les stems doivent démarrer synchronisés à 50%
+1. **Click** progress bar at 50%
+2. **Play** - All stems must start in sync at 50%
 
 ---
 
-### ✅ **TÂCHE 5: Tester contrôles indépendants (15 min)**
+### ✅ **TASK 5: Test independent controls (15 min)**
 
-#### Test Volume indépendant
+#### Independent volume test
 
-**Pour CHAQUE stem** (vocals, drums, bass, other):
+**For EACH stem** (vocals, drums, bass, other):
 
-1. **Slider Volume à 50%**
-2. **Console doit afficher**:
+1. **Set Volume slider to 50%**
+2. **Console should show**:
    ```javascript
    [Audio] vocals volume: 0.50 (effective: 0.50)
    ```
-3. **Vérifier audio** - Seulement ce stem baisse de volume
+3. **Verify audio** - Only that stem gets quieter
 
-#### Test Mute
+#### Mute test
 
-1. **Cliquer "MUTE"** sur vocals
+1. **Click "MUTE"** on vocals
 2. **Console**:
    ```javascript
    [Audio] vocals volume: 1.00 (effective: 0.00)
    ```
-3. **Vérifier** - Vocals muettes, autres stems jouent
+3. **Verify** - Vocals muted, other stems still play
 
-#### Test Solo
+#### Solo test
 
-1. **Cliquer "SOLO"** sur drums
+1. **Click "SOLO"** on drums
 2. **Console**:
    ```javascript
    [Audio] vocals volume: 1.00 (effective: 0.00)
@@ -283,40 +283,40 @@ python app.py
    [Audio] bass volume: 1.00 (effective: 0.00)
    [Audio] other volume: 1.00 (effective: 0.00)
    ```
-3. **Vérifier** - Seulement drums audible
+3. **Verify** - Only drums audible
 
-#### Test Pan
+#### Pan test
 
-1. **Slider Pan à -100** (gauche) pour vocals
+1. **Set Pan slider to -100** (left) for vocals
 2. **Console**:
    ```javascript
    [Audio] vocals pan: -1.00
    ```
-3. **Vérifier écouteurs** - Vocals à gauche uniquement
+3. **Verify on headphones** - Vocals on left only
 
 ---
 
-### ⏳ **TÂCHE 6: Finaliser Pitch/Tempo (optionnel - 20 min)**
+### ⏳ **TASK 6: Finish Pitch/Tempo (optional - 20 min)**
 
-**État actuel**: Sliders connectés, SoundTouch chargé, mais peut ne pas fonctionner sans AudioWorklet.
+**Current state**: Sliders connected, SoundTouch loaded, but may not work without AudioWorklet.
 
-#### Test Pitch
+#### Pitch test
 
-1. **Slider Key à +3**
-2. **Console doit afficher**:
+1. **Set Key slider to +3**
+2. **Console should show**:
    ```javascript
    [Audio] Pitch shift: 3 semitones (ratio: 1.189)
-   // OU si fallback:
+   // OR if fallback:
    [Audio] AudioWorklet not supported, using playbackRate fallback
    [Audio] Fallback pitch via playbackRate: 1.189
    ```
 
-#### Si AudioWorklet non supporté
+#### If AudioWorklet is not supported
 
-**Alternative simple** - Utiliser `playbackRate` (change pitch ET tempo ensemble):
+**Simple alternative** - Use `playbackRate` (changes pitch AND tempo together):
 
 ```javascript
-// Dans applyPitchShift() - ligne ~1230
+// In applyPitchShift() - around line ~1230
 applyPitchShift(semitones) {
     const pitchRatio = Math.pow(2, semitones / 12);
 
@@ -329,40 +329,40 @@ applyPitchShift(semitones) {
 
 ---
 
-## 📝 COMMANDES UTILES (Ubuntu)
+## 📝 USEFUL COMMANDS (Ubuntu)
 
-### Édition fichiers
+### File editing
 
 ```bash
 cd /home/michael/StemTube-dev
 
-# Vérifier syntaxe
+# Check syntax
 node --check static/js/mobile-app.js
 
-# Chercher une fonction
+# Find a function
 grep -n "function_name" static/js/mobile-app.js
 
-# Voir lignes spécifiques
+# View specific lines
 sed -n '60,80p' static/js/mobile-app.js
 
-# Backup avant modification
+# Backup before changes
 cp static/js/mobile-app.js static/js/mobile-app.js.backup-$(date +%Y%m%d-%H%M)
 ```
 
 ### Test app
 
 ```bash
-# Activer venv
+# Activate venv
 source venv/bin/activate
 
-# Lancer app
+# Start app
 python app.py
 
-# Tester sur mobile
+# Test on mobile
 # http://localhost:5011/mobile
 ```
 
-### Debug console mobile
+### Mobile console debugging
 
 **Chrome Android**:
 1. PC: `chrome://inspect`
@@ -370,168 +370,168 @@ python app.py
 3. Inspect device
 
 **Safari iOS**:
-1. iPhone: Réglages → Safari → Avancé → Inspecteur Web
-2. Mac: Safari → Développement → [iPhone] → localhost
+1. iPhone: Settings -> Safari -> Advanced -> Web Inspector
+2. Mac: Safari -> Develop -> [iPhone] -> localhost
 
 ---
 
-## 🐛 PROBLÈMES CONNUS & SOLUTIONS
+## 🐛 KNOWN ISSUES & FIXES
 
-### Problème 1: "No audio available"
+### Issue 1: "No audio available"
 
-**Cause**: `stems_paths` non parsé ou vide
+**Cause**: `stems_paths` not parsed or empty
 
-**Solution**:
+**Fix**:
 ```javascript
-// Vérifier dans loadStemsForIOS ligne ~500
+// Check in loadStemsForIOS around line ~500
 console.log('[DEBUG] stems_paths raw:', data.stems_paths);
 console.log('[DEBUG] stems_paths parsed:', stemsPaths);
 ```
 
-### Problème 2: "Failed to decode audio data"
+### Issue 2: "Failed to decode audio data"
 
-**Cause**: Fichier stem corrompu ou format non supporté
+**Cause**: Corrupted stem file or unsupported format
 
-**Solution**:
+**Fix**:
 ```bash
-# Vérifier fichiers stems existent
+# Verify stem files exist
 ls -lh "core/downloads/*/stems/*.mp3"
 
-# Tester un stem manuellement
+# Test a stem manually
 ffmpeg -i core/downloads/.../vocals.mp3 -t 5 test.mp3
 ```
 
-### Problème 3: Désynchronisation stems
+### Issue 3: Stem desync
 
-**Cause**: Utilise `HTMLAudioElement.play()` au lieu de `AudioBufferSourceNode.start()`
+**Cause**: Using `HTMLAudioElement.play()` instead of `AudioBufferSourceNode.start()`
 
-**Solution**: Code déjà corrigé, vérifie que `playPlayback()` utilise bien:
+**Fix**: Code already corrected, verify `playPlayback()` uses:
 ```javascript
 sourceNode.start(when, offset);  // ✅ Correct
-// PAS:
-audio.play();  // ❌ Désynchronisation
+// NOT:
+audio.play();  // ❌ Desync
 ```
 
-### Problème 4: "AudioContext suspended"
+### Issue 4: "AudioContext suspended"
 
-**Cause**: iOS bloque audio sans interaction utilisateur
+**Cause**: iOS blocks audio without user interaction
 
-**Solution**: Toucher écran une fois, `unlockAudio()` se déclenche automatiquement
+**Fix**: Tap screen once, `unlockAudio()` triggers automatically
 
 ---
 
-## 📊 CHECKLIST FINALE
+## 📊 FINAL CHECKLIST
 
-### Syntaxe & Code
+### Syntax & Code
 
-- [ ] `node --check static/js/mobile-app.js` → OK
-- [ ] `getEffectiveVolume()` placée après `applyMixerState()`
-- [ ] `initSocket()` fermée avec `});`
-- [ ] Variables `stemBuffers`, `stemGains`, `stemPans` initialisées dans constructor
+- [ ] `node --check static/js/mobile-app.js` -> OK
+- [ ] `getEffectiveVolume()` placed after `applyMixerState()`
+- [ ] `initSocket()` closed with `});`
+- [ ] Variables `stemBuffers`, `stemGains`, `stemPans` initialized in constructor
 
-### Fonctionnement
+### Functionality
 
 - [ ] Console: "All stems loaded, duration: XXs"
-- [ ] Play → Lecture synchronisée des 4 stems
-- [ ] Pause → Arrêt propre
-- [ ] Resume → Reprise à la bonne position
-- [ ] Seek → Navigation dans timeline
+- [ ] Play -> Synchronized playback of 4 stems
+- [ ] Pause -> Clean stop
+- [ ] Resume -> Resume at correct position
+- [ ] Seek -> Timeline navigation
 
-### Contrôles Indépendants
+### Independent Controls
 
-- [ ] Volume vocals → Change seulement vocals
-- [ ] Mute drums → Mute seulement drums
-- [ ] Solo bass → Seulement bass audible
-- [ ] Pan other → Panning stéréo fonctionne
+- [ ] Volume vocals -> Only vocals change
+- [ ] Mute drums -> Only drums muted
+- [ ] Solo bass -> Only bass audible
+- [ ] Pan other -> Stereo panning works
 
 ### Interface
 
-- [ ] Timeline Chords avec playhead rouge
-- [ ] Boutons "MUTE" / "SOLO" (texte, pas icônes)
-- [ ] Generate Lyrics fonctionne
-- [ ] Onglets Mix/Chords/Lyrics switchent
+- [ ] Timeline Chords with red playhead
+- [ ] "MUTE" / "SOLO" buttons (text, not icons)
+- [ ] Generate Lyrics works
+- [ ] Mix/Chords/Lyrics tabs switch
 
-### Multi-plateformes
+### Multi-platform
 
-- [ ] **Android**: Tout fonctionne
-- [ ] **iOS**: Tout fonctionne (après touch écran)
-- [ ] **Desktop mobile view**: Tout fonctionne
-
----
-
-## 🎯 PRIORITÉS
-
-### **PRIORITÉ 1 (CRITIQUE)** - Corriger syntaxe
-
-→ Tâche 1 (5 min) - Sans ça, rien ne marche
-
-### **PRIORITÉ 2 (IMPORTANT)** - Tester chargement
-
-→ Tâches 3-4 (20 min) - Vérifier que les stems se chargent et jouent
-
-### **PRIORITÉ 3 (IMPORTANT)** - Tester contrôles
-
-→ Tâche 5 (15 min) - Vérifier Volume/Mute/Solo/Pan indépendants
-
-### **PRIORITÉ 4 (OPTIONNEL)** - Pitch/Tempo
-
-→ Tâche 6 (20 min) - Peut être fait plus tard
+- [ ] **Android**: Everything works
+- [ ] **iOS**: Everything works (after screen tap)
+- [ ] **Desktop mobile view**: Everything works
 
 ---
 
-## 💾 FICHIERS MODIFIÉS
+## 🎯 PRIORITIES
+
+### **PRIORITY 1 (CRITICAL)** - Fix syntax
+
+-> Task 1 (5 min) - Without this, nothing works
+
+### **PRIORITY 2 (IMPORTANT)** - Test loading
+
+-> Tasks 3-4 (20 min) - Verify stems load and play
+
+### **PRIORITY 3 (IMPORTANT)** - Test controls
+
+-> Task 5 (15 min) - Verify independent Volume/Mute/Solo/Pan
+
+### **PRIORITY 4 (OPTIONAL)** - Pitch/Tempo
+
+-> Task 6 (20 min) - Can be done later
+
+---
+
+## 💾 MODIFIED FILES
 
 ```
-static/js/mobile-app.js          ← Principal (erreur syntaxe ligne 63)
-static/css/mobile-style.css      ← OK (Timeline, boutons)
-templates/mobile-index.html      ← OK
-fix-mobile-stems.py              ← Script Python (déjà exécuté)
+static/js/mobile-app.js          <- Main (syntax error line 63)
+static/css/mobile-style.css      <- OK (timeline, buttons)
+templates/mobile-index.html      <- OK
+fix-mobile-stems.py              <- Python script (already run)
 ```
 
-## 📚 BACKUPS DISPONIBLES
+## 📚 AVAILABLE BACKUPS
 
 ```
-static/js/mobile-app.js.backup   ← Avant script Python
+static/js/mobile-app.js.backup   <- Before Python script
 ```
 
 ---
 
-## 🚀 DÉMARRAGE RAPIDE (Ubuntu)
+## 🚀 QUICK START (Ubuntu)
 
 ```bash
-# 1. Ouvrir VSCode ou vim
+# 1. Open VSCode or vim
 code /home/michael/StemTube-dev/static/js/mobile-app.js
 
-# 2. Corriger ligne ~60-70 (fermer initSocket)
-# 3. Supprimer getEffectiveVolume ligne ~63-78
-# 4. Ajouter getEffectiveVolume après applyMixerState (~660)
+# 2. Fix line ~60-70 (close initSocket)
+# 3. Remove getEffectiveVolume lines ~63-78
+# 4. Add getEffectiveVolume after applyMixerState (~660)
 
-# 5. Vérifier
+# 5. Verify
 node --check static/js/mobile-app.js
 
-# 6. Tester
+# 6. Test
 source venv/bin/activate
 python app.py
-# → http://localhost:5011/mobile
+# -> http://localhost:5011/mobile
 ```
 
 ---
 
-## 📞 AIDE SUPPLÉMENTAIRE
+## 📞 EXTRA HELP
 
-Si bloqué, vérifie:
+If stuck, check:
 
-1. **Console navigateur** - Toutes les erreurs JS y apparaissent
-2. **Console Python** - Erreurs serveur (404, 500)
-3. **Ce fichier** - Toutes les étapes détaillées
+1. **Browser console** - all JS errors appear there
+2. **Python console** - server errors (404, 500)
+3. **This file** - all steps documented
 
-**Fichier de référence complet**:
-- `CLAUDE.md` - Architecture complète desktop
-- `MOBILE_SETUP.md` - Documentation mobile (si existe)
-- Ce fichier - Continuation des travaux
+**Full reference files**:
+- `CLAUDE.md` - complete desktop architecture
+- `MOBILE_SETUP.md` - mobile docs (if it exists)
+- This file - work continuation
 
 ---
 
-**Bon courage ! 🎵**
+**Good luck! 🎵**
 
-_Dernière mise à jour: 2025-01-05 - Conversation sauvegardée depuis Windows → Ubuntu WSL_
+_Last updated: 2025-01-05 - Conversation saved from Windows -> Ubuntu WSL_

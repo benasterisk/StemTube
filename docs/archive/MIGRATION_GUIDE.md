@@ -1,155 +1,155 @@
-# Guide de Migration: Ancienne Prod → Nouvelle Prod
+# Migration Guide: Old Prod -> New Prod
 
-## Situation Actuelle
+## Current Situation
 
-Vous avez déployé le code DEV sur la machine de production, mais vous avez besoin de récupérer:
-- ✅ La **vraie base de données utilisateurs** (users, passwords, admin)
-- ✅ Les **vrais downloads** (fichiers MP3 originaux)
-- ✅ Les **vraies extractions** (stems séparés)
+You deployed the DEV code to the production machine, but you need to recover:
+- ✅ The **real user database** (users, passwords, admin)
+- ✅ The **real downloads** (original MP3 files)
+- ✅ The **real extractions** (separated stems)
 
-## 🎯 Solution Automatique (Recommandée)
+## 🎯 Automatic Solution (Recommended)
 
-### Étape 1: Configuration
+### Step 1: Configuration
 
-Éditez le script `migrate_from_old_prod.sh` et modifiez ces variables:
+Edit `migrate_from_old_prod.sh` and update these variables:
 
 ```bash
-# Ancienne machine de production
-OLD_PROD_HOST="user@old-prod-server.com"  # 👈 À MODIFIER
-OLD_PROD_PATH="/opt/stemtube/StemTube-dev"  # 👈 À MODIFIER si différent
+# Old production machine
+OLD_PROD_HOST="user@old-prod-server.com"  # <-- UPDATE
+OLD_PROD_PATH="/opt/stemtube/StemTube-dev"  # <-- UPDATE if different
 
-# Nouvelle machine (actuelle)
-NEW_PROD_PATH="/path/to/StemTube-dev"  # 👈 OK si vous êtes ici
+# New machine (current)
+NEW_PROD_PATH="/path/to/StemTube-dev"  # <-- OK if you are here
 ```
 
-**Exemples de OLD_PROD_HOST:**
-- `root@192.168.1.100` (accès par IP)
-- `michael@prod.example.com` (accès par hostname)
-- `ubuntu@stemtube-prod` (si défini dans ~/.ssh/config)
+**Examples for OLD_PROD_HOST:**
+- `root@192.168.1.100` (IP access)
+- `michael@prod.example.com` (hostname access)
+- `ubuntu@stemtube-prod` (if set in ~/.ssh/config)
 
-### Étape 2: Test de Connexion SSH
+### Step 2: Test SSH connection
 
-Vérifiez que vous pouvez vous connecter à l'ancienne machine:
+Verify you can connect to the old machine:
 
 ```bash
 ssh user@old-prod-server.com
 ```
 
-Si ça fonctionne, vous êtes prêt! Sinon, configurez vos clés SSH:
+If it works, you are ready. Otherwise, configure SSH keys:
 
 ```bash
-# Copier votre clé publique vers l'ancienne machine
+# Copy your public key to the old machine
 ssh-copy-id user@old-prod-server.com
 ```
 
-### Étape 3: Lancement de la Migration
+### Step 3: Run the migration
 
 ```bash
-# Rendre le script exécutable
+# Make the script executable
 chmod +x migrate_from_old_prod.sh
 
-# Lancer la migration
+# Run the migration
 ./migrate_from_old_prod.sh
 ```
 
-Le script va:
-1. ✅ Sauvegarder vos données DEV actuelles
-2. ✅ Télécharger la base de données PROD
-3. ✅ Télécharger tous les fichiers audio
-4. ✅ Vérifier l'intégrité
+The script will:
+1. ✅ Back up your current DEV data
+2. ✅ Download the PROD database
+3. ✅ Download all audio files
+4. ✅ Verify integrity
 
-**Durée estimée:** 5-60 minutes selon la taille des données.
+**Estimated time:** 5-60 minutes depending on data size.
 
-### Étape 4: Redémarrage
+### Step 4: Restart
 
 ```bash
-# Démarrer l'application avec les vraies données PROD
+# Start the app with the real PROD data
 python app.py
 ```
 
-Testez la connexion avec vos comptes PROD habituels!
+Test login with your normal PROD accounts.
 
 ---
 
-## 🔧 Solution Manuelle (Alternative)
+## 🔧 Manual Solution (Alternative)
 
-Si vous préférez contrôler chaque étape manuellement:
+If you prefer to control each step manually:
 
-### 1. Backup des données actuelles (DEV)
+### 1. Back up current DEV data
 
 ```bash
-# Créer un répertoire de backup
+# Create a backup directory
 mkdir -p ~/stemtube_backup_$(date +%Y%m%d)
 cd ~/stemtube_backup_$(date +%Y%m%d)
 
-# Sauvegarder la base DEV
+# Back up the DEV database
 cp /path/to/StemTube-dev/stemtubes.db ./stemtubes_dev.db
 
-# Sauvegarder les fichiers DEV
+# Back up the DEV files
 cp -r /path/to/StemTube-dev/core/downloads ./downloads_dev/
 ```
 
-### 2. Arrêter l'application
+### 2. Stop the app
 
 ```bash
-# Trouver le processus
+# Find the process
 ps aux | grep "python.*app.py"
 
-# Arrêter proprement
+# Stop it cleanly
 pkill -f "python.*app.py"
 ```
 
-### 3. Récupérer la base de données PROD
+### 3. Fetch the PROD database
 
 ```bash
-# Méthode 1: rsync (reprise possible si interruption)
+# Method 1: rsync (resume if interrupted)
 rsync -avzh --progress \
   user@old-prod:/opt/stemtube/StemTube-dev/stemtubes.db \
   /path/to/StemTube-dev/stemtubes.db
 
-# Méthode 2: scp (simple)
+# Method 2: scp (simple)
 scp user@old-prod:/opt/stemtube/StemTube-dev/stemtubes.db \
   /path/to/StemTube-dev/stemtubes.db
 ```
 
-### 4. Récupérer les fichiers audio PROD
+### 4. Fetch PROD audio files
 
 ```bash
-# Attention: peut être volumineux et long!
+# Warning: may be large and slow
 rsync -avzh --progress \
   user@old-prod:/opt/stemtube/StemTube-dev/core/downloads/ \
   /path/to/StemTube-dev/core/downloads/
 ```
 
-**Astuce:** Pour reprendre un transfert interrompu, relancez simplement la même commande rsync.
+**Tip:** To resume an interrupted transfer, just re-run the same rsync command.
 
-### 5. Vérifier l'intégrité
+### 5. Verify integrity
 
 ```bash
 cd /path/to/StemTube-dev
 
-# Vérifier la base de données
+# Check database integrity
 sqlite3 stemtubes.db "PRAGMA integrity_check;"
-# Doit afficher: ok
+# Should output: ok
 
-# Compter les utilisateurs
+# Count users
 sqlite3 stemtubes.db "SELECT COUNT(*) FROM users;"
 
-# Compter les downloads
+# Count downloads
 sqlite3 stemtubes.db "SELECT COUNT(*) FROM global_downloads;"
 
-# Vérifier les fichiers
+# Check files
 find core/downloads -name "*.mp3" | wc -l
 ```
 
-### 6. Ajuster les permissions
+### 6. Fix permissions
 
 ```bash
 chmod -R u+rw core/downloads
 chmod 644 stemtubes.db
 ```
 
-### 7. Redémarrer
+### 7. Restart
 
 ```bash
 python app.py
@@ -157,153 +157,153 @@ python app.py
 
 ---
 
-## 🔍 Vérifications Post-Migration
+## 🔍 Post-Migration Checks
 
-Une fois l'application redémarrée, vérifiez:
+After the app restarts, verify:
 
-### 1. Connexion Admin
-- Allez sur http://localhost:5011
-- Connectez-vous avec votre compte admin PROD habituel
-- ✅ Si ça fonctionne → la base est bonne!
+### 1. Admin login
+- Go to http://localhost:5011
+- Log in with your usual PROD admin account
+- ✅ If it works -> DB is good
 
-### 2. Liste des Utilisateurs
-- Allez dans l'onglet "Users Administration"
-- Vérifiez que tous vos utilisateurs PROD sont présents
+### 2. User list
+- Go to the "Users Administration" tab
+- Verify all PROD users are present
 
-### 3. Downloads et Extractions
-- Vérifiez l'onglet "Downloads"
-- Vérifiez l'onglet "Extractions"
-- ✅ Les listes doivent correspondre à votre ancienne PROD
+### 3. Downloads and extractions
+- Check the "Downloads" tab
+- Check the "Extractions" tab
+- ✅ Lists should match the old PROD
 
 ### 4. Mixer
-- Ouvrez une extraction dans le mixer
-- Vérifiez que les stems se chargent correctement
-- ✅ L'audio doit fonctionner sans erreur 404
+- Open an extraction in the mixer
+- Verify stems load correctly
+- ✅ Audio should play with no 404 errors
 
-### 5. Library (si activée)
-- Vérifiez que la bibliothèque globale affiche tout le contenu
+### 5. Library (if enabled)
+- Verify the global library shows all content
 
 ---
 
-## 🚨 Résolution de Problèmes
+## 🚨 Troubleshooting
 
-### Erreur: "Connection refused" lors du SSH
+### Error: "Connection refused" during SSH
 
-**Cause:** SSH non accessible ou firewall bloqué.
+**Cause:** SSH is not accessible or blocked by firewall.
 
-**Solution:**
+**Fix:**
 ```bash
-# Vérifier que le SSH fonctionne
+# Verify SSH works
 ssh -v user@old-prod-server.com
 
-# Si timeout, vérifier le firewall
+# If timeout, check firewall
 ping old-prod-server.com
 ```
 
-### Erreur: "Permission denied" lors du rsync
+### Error: "Permission denied" during rsync
 
-**Cause:** Droits d'accès insuffisants sur l'ancienne machine.
+**Cause:** Insufficient permissions on the old machine.
 
-**Solution:**
+**Fix:**
 ```bash
-# Se connecter avec sudo si nécessaire
+# Connect with sudo if needed
 ssh user@old-prod-server.com "sudo chmod -R +r /opt/stemtube/StemTube-dev"
 ```
 
-### Erreur: "No space left on device"
+### Error: "No space left on device"
 
-**Cause:** Pas assez d'espace disque.
+**Cause:** Not enough disk space.
 
-**Solution:**
+**Fix:**
 ```bash
-# Vérifier l'espace disponible
+# Check available space
 df -h /path/to/StemTube-dev
 
-# Libérer de l'espace si nécessaire
-# Supprimer les vieux logs, tmp files, etc.
+# Free up space if needed
+# Remove old logs, tmp files, etc.
 ```
 
-### La base est corrompue après transfert
+### Database corrupted after transfer
 
-**Cause:** Transfert interrompu.
+**Cause:** Interrupted transfer.
 
-**Solution:**
+**Fix:**
 ```bash
-# Restaurer le backup et recommencer
+# Restore backup and retry
 cp ~/stemtube_backup_*/stemtubes_dev.db /path/to/StemTube-dev/stemtubes.db
 
-# Retélécharger avec rsync (vérifie l'intégrité)
+# Re-download with rsync (verifies integrity)
 rsync -avzh --progress --checksum \
   user@old-prod:/opt/stemtube/StemTube-dev/stemtubes.db \
   /path/to/StemTube-dev/stemtubes.db
 ```
 
-### Les stems ne se chargent pas dans le mixer (404)
+### Stems do not load in mixer (404)
 
-**Cause:** Les chemins de fichiers sont incorrects en base.
+**Cause:** File paths are incorrect in the database.
 
-**Solution:**
+**Fix:**
 ```bash
-# Vérifier les chemins dans la base
+# Check paths in the database
 sqlite3 stemtubes.db "SELECT id, title, stems_paths FROM global_downloads WHERE extracted=1 LIMIT 5;"
 
-# Si les chemins sont absolus et incorrects, il faudra les corriger
-# Exemple de requête de correction (À ADAPTER):
+# If paths are absolute and wrong, fix them
+# Example correction (ADAPT THIS):
 sqlite3 stemtubes.db "UPDATE global_downloads SET stems_paths = REPLACE(stems_paths, '/old/path/', '/new/path/');"
 ```
 
 ---
 
-## 📊 Statistiques de Taille Typiques
+## 📊 Typical Size Stats
 
-Pour estimer la durée du transfert:
+Use this to estimate transfer time:
 
-| Élément | Taille Typique | Durée Transfert (100 Mbps) |
-|---------|----------------|----------------------------|
-| Base de données | 10-100 MB | < 1 minute |
-| 1 Download MP3 | 5-15 MB | 1-2 secondes |
-| 1 Extraction (4 stems) | 20-60 MB | 5-10 secondes |
+| Item | Typical Size | Transfer Time (100 Mbps) |
+|------|--------------|--------------------------|
+| Database | 10-100 MB | < 1 minute |
+| 1 MP3 download | 5-15 MB | 1-2 seconds |
+| 1 extraction (4 stems) | 20-60 MB | 5-10 seconds |
 | 100 songs + extractions | 5-10 GB | 10-20 minutes |
-| 1000 songs + extractions | 50-100 GB | 1-3 heures |
+| 1000 songs + extractions | 50-100 GB | 1-3 hours |
 
-**Conseil:** Lancez le transfert pendant la nuit si vous avez beaucoup de données!
+**Tip:** Run the transfer overnight if you have a lot of data.
 
 ---
 
-## 🔐 Sécurité
+## 🔐 Security
 
-### Backup avant migration
+### Backup before migration
 
-**IMPORTANT:** Le script fait un backup automatique, mais par précaution:
+**IMPORTANT:** The script creates a backup automatically, but for safety:
 
 ```bash
-# Backup manuel complet
+# Full manual backup
 tar -czf stemtube_backup_$(date +%Y%m%d).tar.gz \
   stemtubes.db \
   core/downloads/
 ```
 
-### Conserver l'ancienne machine
+### Keep the old machine
 
-**Ne supprimez PAS l'ancienne machine immédiatement!**
+**Do NOT delete the old machine immediately.**
 
-Attendez au moins 1 semaine après la migration pour être sûr que tout fonctionne.
+Wait at least 1 week after migration to make sure everything works.
 
 ---
 
 ## 📞 Support
 
-Si vous rencontrez des problèmes:
+If you hit problems:
 
-1. Consultez les logs: `tail -f logs/app.log`
-2. Vérifiez l'intégrité de la base: `sqlite3 stemtubes.db "PRAGMA integrity_check;"`
-3. Vérifiez les fichiers: `find core/downloads -name "*.mp3" | head -20`
+1. Check logs: `tail -f logs/app.log`
+2. Verify DB integrity: `sqlite3 stemtubes.db "PRAGMA integrity_check;"`
+3. Check files: `find core/downloads -name "*.mp3" | head -20`
 
-En cas de problème grave, restaurez le backup:
+If things go badly, restore the backup:
 ```bash
 cp ~/stemtube_backup_*/stemtubes_dev.db ./stemtubes.db
 ```
 
 ---
 
-**Dernière mise à jour:** 2025-10-28
+**Last updated:** 2025-10-28

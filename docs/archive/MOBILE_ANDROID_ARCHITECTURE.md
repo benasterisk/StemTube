@@ -1,25 +1,25 @@
-# Architecture Mobile Android - StemTube
+# Mobile Android Architecture - StemTube
 
-## Document de Référence pour l'Implémentation
+## Reference Document for Implementation
 
 Date: 2025-11-07
 Branch: `fix-mobile-properly`
 
 ---
 
-## 🎯 Objectif
+## 🎯 Goal
 
-Créer une interface mobile **Android-first** qui réutilise **exactement** l'architecture desktop existante :
-- Mêmes APIs backend (aucune modification serveur)
-- Même moteur audio (SoundTouch AudioWorklet)
-- Même logique métier
-- Interface UI adaptée pour mobile (touch-friendly, responsive)
+Build an **Android-first** mobile interface that reuses the **exact** desktop architecture:
+- Same backend APIs (no server changes)
+- Same audio engine (SoundTouch AudioWorklet)
+- Same business logic
+- Mobile-friendly UI (touch, responsive)
 
 ---
 
-## 📱 Structure Frontend Mobile
+## 📱 Mobile Frontend Structure
 
-### Navigation Principale (Bottom Nav)
+### Main Navigation (Bottom Nav)
 
 ```
 ┌─────────────────────────────────────┐
@@ -39,30 +39,30 @@ Créer une interface mobile **Android-first** qui réutilise **exactement** l'ar
 
 **Features:**
 - YouTube search bar + results grid
-- File upload button (gestionnaire Android)
+- File upload button (Android picker)
 - Download button on each result
 - Upload progress indicator
 
-**APIs utilisées:**
+**APIs used:**
 ```javascript
 GET  /api/search?q=${query}&count=10
 POST /api/upload-file (FormData)
 POST /api/downloads (add YouTube video)
 ```
 
-#### 2. 📚 LIBRARY Tab (2 sous-onglets)
+#### 2. 📚 LIBRARY Tab (2 sub-tabs)
 **Template:** `<div id="mobileLibraryPage">`
 
 ##### 📂 My Library
-- Liste des downloads/extractions utilisateur
-- Card per item avec:
+- User downloads/extractions list
+- Card per item with:
   - Thumbnail
   - Title
-  - Status: "Extract Stems" ou "✓ Stems Available"
-  - Bouton **"Mix"** si extracted
+  - Status: "Extract Stems" or "✓ Stems Available"
+  - **Mix** button if extracted
   - Menu: Download, Delete
 
-**APIs utilisées:**
+**APIs used:**
 ```javascript
 GET    /api/downloads (list user items)
 POST   /api/extractions (start extraction)
@@ -70,20 +70,20 @@ DELETE /api/downloads/${id}
 ```
 
 ##### 🌍 Global Library
-- Liste des items partagés
-- Card per item avec:
+- Shared items list
+- Card per item with:
   - Thumbnail
   - Title
-  - Bouton **"Add to My Library"**
+  - **Add to My Library** button
 
-**APIs utilisées:**
+**APIs used:**
 ```javascript
 GET  /api/library
 POST /api/library/${id}/add-download
 POST /api/library/${id}/add-extraction
 ```
 
-#### 3. 🎚️ MIXER Tab (3 onglets internes)
+#### 3. 🎚️ MIXER Tab (3 internal tabs)
 **Template:** `<div id="mobileMixerPage">`
 
 **Structure:**
@@ -94,7 +94,7 @@ POST /api/library/${id}/add-extraction
 │  [Mix]  [Chords]  [Lyrics]          │
 ├─────────────────────────────────────┤
 │                                     │
-│      [ONGLET CONTENT]               │
+│      [TAB CONTENT]                  │
 │                                     │
 ├─────────────────────────────────────┤
 │  ▶️ | ⏸️ | ⏹️  [====] 1:23 / 3:45  │
@@ -104,31 +104,31 @@ POST /api/library/${id}/add-extraction
 
 ##### 🎚️ Mix Tab
 **Content:**
-- **Waveform globale unique** (canvas)
-- **Liste stems chargés dynamiquement**
-  - Nom du stem (vocals, drums, bass, other, guitar, piano)
+- **Single global waveform** (canvas)
+- **Dynamically loaded stems list**
+  - Stem name (vocals, drums, bass, other, guitar, piano)
   - Volume slider (0-100%)
-  - Pan slider (-100 à +100)
-  - Bouton Solo
-  - Bouton Mute
+  - Pan slider (-100 to +100)
+  - Solo button
+  - Mute button
 
-**API utilisée:**
+**APIs used:**
 ```javascript
 GET /api/extractions/${id}
-  → stems_paths: {vocals: "path", drums: "path", ...}
+  -> stems_paths: {vocals: "path", drums: "path", ...}
 
 GET /api/extracted_stems/${id}/${stem_name}
-  → streaming audio file
+  -> streaming audio file
 ```
 
 ##### 🎵 Chords Tab
 **Content:**
 - Horizontal scrolling timeline
-- Chord boxes avec timestamps
-- Playhead rouge synchronisé
-- Measure bars (barres de mesure)
+- Chord boxes with timestamps
+- Red synchronized playhead
+- Measure bars
 
-**Données:**
+**Data:**
 ```javascript
 extraction.chords_data = [
   {timestamp: 0.5, chord: "Am"},
@@ -140,15 +140,15 @@ extraction.detected_bpm = 120
 
 ##### 🎤 Lyrics Tab
 **Content:**
-- Bouton **"Generate Lyrics"** / **"Regenerate"**
+- **"Generate Lyrics"** / **"Regenerate"** button
 - Scrolling lyrics container
-- Auto-scroll avec ligne active highlightée
+- Auto-scroll with highlighted active line
 - Word-level timing (karaoke)
 
-**API utilisée:**
+**APIs used:**
 ```javascript
 POST /api/extractions/${id}/lyrics/generate
-  → returns lyrics_data
+  -> returns lyrics_data
 
 extraction.lyrics_data = [
   {start: 0.5, end: 2.1, text: "Hello world"},
@@ -156,33 +156,33 @@ extraction.lyrics_data = [
 ]
 ```
 
-##### 🎮 Barre de Contrôle (commune aux 3 onglets)
-**Position:** Fixed bottom (au-dessus du bottom nav)
+##### 🎮 Control Bar (shared across 3 tabs)
+**Position:** Fixed bottom (above bottom nav)
 
 **Controls:**
 - **Play/Pause/Stop** buttons
 - **Progress bar** (draggable)
 - **Time display** (current / total)
-- **Tempo slider** (-50% à +100%) → SoundTouch
-- **Pitch slider** (-6 à +6 semitones) → SoundTouch
+- **Tempo slider** (-50% to +100%) -> SoundTouch
+- **Pitch slider** (-6 to +6 semitones) -> SoundTouch
 
 ---
 
-## 🔊 Architecture Audio Android
+## 🔊 Android Audio Architecture
 
 ### Technologies
-- **Web Audio API** (natif Chrome Android)
-- **SoundTouch AudioWorklet** (timestretch/pitchshift professionnel)
-- **Pas de playbackRate** (trop basique)
+- **Web Audio API** (native Chrome Android)
+- **SoundTouch AudioWorklet** (pro time-stretch/pitch-shift)
+- **No playbackRate** (too basic)
 
-### Flux Audio par Stem
+### Per-Stem Audio Flow
 
 ```
 AudioBuffer (decoded audio file)
     ↓
 BufferSourceNode (createBufferSource)
     ↓
-SoundTouchWorkletNode (tempo + pitch indépendants)
+SoundTouchWorkletNode (independent tempo + pitch)
     ↓  parameters: {tempo: 1.0, pitch: 0, rate: 1.0}
     ↓
 GainNode (volume control)
@@ -196,7 +196,7 @@ MasterGainNode (master volume)
 AudioContext.destination (speakers)
 ```
 
-### Code Pattern Desktop à Réutiliser
+### Desktop Code Pattern to Reuse
 
 ```javascript
 // 1. Init AudioContext
@@ -251,9 +251,9 @@ stems[stemName] = {
 source.start(0, currentTime);
 ```
 
-### Contrôles Audio
+### Audio Controls
 
-#### Tempo (timestretch)
+#### Tempo (time-stretch)
 ```javascript
 // Change tempo WITHOUT changing pitch
 const tempoRatio = newBPM / originalBPM; // e.g., 1.2 = +20% faster
@@ -262,7 +262,7 @@ stems.forEach(stem => {
 });
 ```
 
-#### Pitch (pitchshift)
+#### Pitch (pitch-shift)
 ```javascript
 // Change pitch WITHOUT changing tempo
 const pitchRatio = Math.pow(2, semitones / 12); // e.g., +2 semitones
@@ -302,9 +302,9 @@ stems.forEach(stem => {
 
 ---
 
-## 📁 Fichiers à Modifier
+## 📁 Files to Edit
 
-### mobile-app.js - Structure Cible
+### mobile-app.js - Target Structure
 
 ```javascript
 class MobileApp {
@@ -416,37 +416,37 @@ class MobileApp {
 
 ---
 
-## 🔄 Fichiers Desktop à Réutiliser (Sans Modification)
+## 🔄 Desktop Files to Reuse (No Changes)
 
-### Backend APIs (aucun changement)
-- `app.py` - toutes les routes `/api/*`
-- `core/downloads_db.py` - logique database
-- `core/stems_extractor.py` - extraction Demucs
-- `core/lyrics_detector.py` - transcription Whisper
-- `core/madmom_chord_detector.py` - détection accords
+### Backend APIs (no change)
+- `app.py` - all `/api/*` routes
+- `core/downloads_db.py` - database logic
+- `core/stems_extractor.py` - Demucs extraction
+- `core/lyrics_detector.py` - Whisper transcription
+- `core/madmom_chord_detector.py` - chord detection
 
-### Frontend Assets (réutilisation directe)
+### Frontend Assets (direct reuse)
 - `static/wasm/soundtouch-worklet.js` - AudioWorklet
-- `static/wasm/soundtouch.js` - Librairie SoundTouch
-- Pattern `SimplePitchTempoController` pour tempo/pitch
-- Pattern `AudioEngine.setupAudioNodes()` pour stems
+- `static/wasm/soundtouch.js` - SoundTouch library
+- `SimplePitchTempoController` pattern for tempo/pitch
+- `AudioEngine.setupAudioNodes()` pattern for stems
 
 ---
 
 ## 🎨 Mobile UI Simplifications
 
-### Différences Desktop → Mobile
+### Desktop -> Mobile differences
 
 | Feature | Desktop | Mobile Android |
 |---------|---------|----------------|
-| Layout | 2 colonnes split | 1 colonne stack |
-| Navigation | Tabs top | Bottom nav |
-| Waveforms | Multiple par stem | 1 globale unique |
-| Mixer controls | Faders horizontaux | Sliders verticaux touch |
+| Layout | 2-column split | 1-column stack |
+| Navigation | Top tabs | Bottom nav |
+| Waveforms | Multiple per stem | 1 global waveform |
+| Mixer controls | Horizontal faders | Touch vertical sliders |
 | Chord timeline | Large display | Scrollable horizontal |
 | Lyrics | Side panel | Full-screen tab |
-| Tempo/Pitch | Boutons +/- | Sliders + boutons |
-| File upload | Drag & drop | File picker Android |
+| Tempo/Pitch | +/- buttons | Sliders + buttons |
+| File upload | Drag & drop | Android file picker |
 
 ### Touch Events vs Mouse
 
@@ -463,68 +463,68 @@ element.addEventListener('touchend', handler);
 
 ---
 
-## ✅ Checklist Implémentation
+## ✅ Implementation Checklist
 
 ### Phase 1: Audio Engine Core
-- [ ] Créer `initAudioContext()` avec masterGainNode
-- [ ] Charger SoundTouch worklet
-- [ ] Implémenter `loadStem(name, url)`
-- [ ] Créer `createAudioNodesForStem()` avec chain complète
-- [ ] Tester chargement 4 stems
+- [ ] Create `initAudioContext()` with masterGainNode
+- [ ] Load SoundTouch worklet
+- [ ] Implement `loadStem(name, url)`
+- [ ] Create `createAudioNodesForStem()` with full chain
+- [ ] Test loading 4 stems
 
 ### Phase 2: Playback Controls
-- [ ] Implémenter `play()` - démarrer tous les stems synchronisés
-- [ ] Implémenter `pause()` - stopper tous les stems
-- [ ] Implémenter `stop()` - reset position
-- [ ] Implémenter `seek(time)` - seek synchronisé
-- [ ] Tester playback basique
+- [ ] Implement `play()` - start all stems in sync
+- [ ] Implement `pause()` - stop all stems
+- [ ] Implement `stop()` - reset position
+- [ ] Implement `seek(time)` - synchronized seek
+- [ ] Test basic playback
 
 ### Phase 3: Tempo/Pitch
-- [ ] Connecter slider Tempo à `soundTouchNode.parameters.get('tempo')`
-- [ ] Connecter slider Pitch à `soundTouchNode.parameters.get('pitch')`
-- [ ] Calculer ratios correctement (BPM, semitones)
-- [ ] Tester changements en temps réel
+- [ ] Wire Tempo slider to `soundTouchNode.parameters.get('tempo')`
+- [ ] Wire Pitch slider to `soundTouchNode.parameters.get('pitch')`
+- [ ] Calculate ratios correctly (BPM, semitones)
+- [ ] Test real-time changes
 
 ### Phase 4: Stem Controls
-- [ ] Implémenter Volume slider → `gainNode.gain.value`
-- [ ] Implémenter Pan slider → `panNode.pan.value`
-- [ ] Implémenter Mute button
-- [ ] Implémenter Solo button (logique hasSolo)
-- [ ] Tester tous contrôles
+- [ ] Implement Volume slider -> `gainNode.gain.value`
+- [ ] Implement Pan slider -> `panNode.pan.value`
+- [ ] Implement Mute button
+- [ ] Implement Solo button (hasSolo logic)
+- [ ] Test all controls
 
 ### Phase 5: Search/Upload
-- [ ] Réparer YouTube search (async/await)
-- [ ] Afficher résultats correctement
-- [ ] Implémenter file upload Android
-- [ ] Tester download et upload
+- [ ] Fix YouTube search (async/await)
+- [ ] Render results correctly
+- [ ] Implement Android file upload
+- [ ] Test download and upload
 
 ### Phase 6: Libraries
-- [ ] Configurer My Library display
-- [ ] Configurer Global Library display
-- [ ] Bouton "Extract Stems" fonctionnel
-- [ ] Bouton "Mix" ouvre mixer
-- [ ] Tester add to library
+- [ ] Configure My Library display
+- [ ] Configure Global Library display
+- [ ] "Extract Stems" button works
+- [ ] "Mix" button opens mixer
+- [ ] Test add to library
 
 ### Phase 7: Chords Tab
-- [ ] Afficher chord timeline
-- [ ] Scroll horizontal
-- [ ] Playhead synchronisé
-- [ ] Click chord → seek
-- [ ] Tester affichage
+- [ ] Render chord timeline
+- [ ] Horizontal scroll
+- [ ] Synchronized playhead
+- [ ] Click chord -> seek
+- [ ] Test display
 
 ### Phase 8: Lyrics Tab
-- [ ] Bouton Generate Lyrics → API
-- [ ] Afficher lyrics avec timestamps
-- [ ] Highlight ligne active
+- [ ] Generate Lyrics button -> API
+- [ ] Render lyrics with timestamps
+- [ ] Highlight active line
 - [ ] Auto-scroll
-- [ ] Tester karaoke
+- [ ] Test karaoke
 
 ### Phase 9: Polish & Test
-- [ ] Barre contrôle visible sur 3 onglets mixer
-- [ ] Transitions fluides
+- [ ] Control bar visible on all 3 mixer tabs
+- [ ] Smooth transitions
 - [ ] Loading indicators
 - [ ] Error handling
-- [ ] Test complet sur Android device
+- [ ] Full test on Android device
 
 ---
 
@@ -538,48 +538,48 @@ console.log('[SoundTouch] Tempo:', tempoRatio, 'Pitch:', pitchRatio);
 ```
 
 ### Chrome DevTools (USB Debugging)
-1. Enable Developer Options sur Android
+1. Enable Developer Options on Android
 2. Enable USB Debugging
 3. Connect via USB
-4. Chrome → `chrome://inspect`
-5. Inspect mobile page
+4. Chrome -> `chrome://inspect`
+5. Inspect the mobile page
 
 ### Common Issues
 - **No sound**: Check `audioContext.state` (suspended?)
-- **Desync stems**: Check all `source.start()` called with same offset
+- **Desync stems**: Ensure all `source.start()` use the same offset
 - **Worklet error**: Check HTTPS or localhost (security requirement)
-- **API 404**: Check extraction ID and stem names
+- **API 404**: Verify extraction ID and stem names
 
 ---
 
 ## 📊 Performance Targets
 
-- **Load time**: < 3s pour charger 4 stems
-- **Playback latency**: < 50ms pour play/pause
+- **Load time**: < 3s to load 4 stems
+- **Playback latency**: < 50ms for play/pause
 - **Seek latency**: < 100ms
 - **UI responsiveness**: 60 FPS scroll/animations
-- **Memory**: < 200MB pour 4 stems (4min song)
+- **Memory**: < 200MB for 4 stems (4 min song)
 
 ---
 
-## 🚀 Prochaines Étapes Après Android
+## 🚀 Next Steps After Android
 
 1. **iOS Compatibility Layer**
-   - Détecter iOS vs Android
-   - Fallback si SoundTouch non disponible
-   - Tester sur Safari iOS
+   - Detect iOS vs Android
+   - Fallback if SoundTouch unavailable
+   - Test on iOS Safari
 
 2. **Progressive Web App**
    - Service Worker
    - Offline support
    - Add to Home Screen
 
-3. **Optimisations**
-   - Lazy loading stems
+3. **Optimizations**
+   - Lazy load stems
    - Waveform caching
-   - Chord/Lyrics preloading
+   - Preload chords/lyrics
 
 ---
 
-**Document maintenu à jour pendant développement**
-**Cocher les items au fur et à mesure** ✅
+**Document kept up to date during development**
+**Check items as you progress** ✅

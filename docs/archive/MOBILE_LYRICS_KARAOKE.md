@@ -35,7 +35,7 @@ A **complete karaoke system** with word-level highlighting and smooth gradient f
 
 ### Problem 1: Generate Lyrics Button Not Working
 
-**User Report:** "(re)generate lyrics ne fonctionne pas"
+**User Report:** "(Re)generate lyrics does not work"
 
 **Investigation:**
 - ✅ Backend endpoint `/api/extractions/<id>/lyrics/generate` already supports video_id lookup
@@ -56,7 +56,7 @@ A **complete karaoke system** with word-level highlighting and smooth gradient f
 
 ### Problem 2: Word-by-Word Highlighting Not Working
 
-**User Report:** "la progression au mot prés avec un highlight du mot en cours ne fonctionne pas (alors qu'elle est parfaite en version Desktop)"
+**User Report:** "Word-by-word progression with highlight on the current word does not work (even though it is perfect on the desktop version)"
 
 **Root Cause:**
 Mobile implementation only did **line-by-line** highlighting, not word-by-word.

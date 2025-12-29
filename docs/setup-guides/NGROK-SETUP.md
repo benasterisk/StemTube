@@ -1,31 +1,31 @@
-# Fix ngrok et FFmpeg pour le service systemd
+# Fix ngrok and FFmpeg for the systemd service
 
-## Problème
+## Problem
 
-Les applications installées via **snap** (ngrok, FFmpeg) ne fonctionnaient pas lorsqu'elles étaient lancées par le service systemd StemTube.
+Apps installed via **snap** (ngrok, FFmpeg) did not work when launched by the StemTube systemd service.
 
-### Symptômes observés
-- **ngrok** : `commande introuvable` dans les logs du service
-- **FFmpeg** : `Permission denied` ou `commande introuvable`
-- Fonctionnement manuel OK, mais échec via systemd
+### Symptoms observed
+- **ngrok**: `command not found` in service logs
+- **FFmpeg**: `Permission denied` or `command not found`
+- Manual runs OK, but fails via systemd
 
-## Cause racine
+## Root Cause
 
-Les services systemd ont un **PATH minimal** par défaut qui n'inclut pas `/snap/bin/`. De plus, les applications snap nécessitent des variables d'environnement spécifiques (notamment `HOME`) pour accéder à leurs configurations isolées.
+systemd services have a **minimal PATH** by default that does not include `/snap/bin/`. Also, snap apps require specific environment variables (notably `HOME`) to access their isolated config.
 
-### Détails techniques
+### Technical details
 
-1. **PATH limité** : systemd utilise uniquement `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
-2. **Isolation snap** : Les applications snap stockent leur config dans `~/snap/app_name/version/.config/`
-3. **Variable HOME** : Sans `HOME` correctement défini, snap ne peut pas localiser ses données
+1. **Limited PATH**: systemd uses only `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+2. **Snap isolation**: snap apps store config in `~/snap/app_name/version/.config/`
+3. **HOME variable**: without `HOME` properly set, snap cannot locate its data
 
-## Solution appliquée
+## Solution Applied
 
-### 1. Création de scripts wrapper
+### 1. Create wrapper scripts
 
-Les wrappers dans `/usr/local/bin/` (qui EST dans le PATH systemd) redirigent vers les exécutables snap :
+Wrappers in `/usr/local/bin/` (which IS in systemd PATH) redirect to snap executables:
 
-#### Wrapper ngrok
+#### ngrok wrapper
 ```bash
 sudo bash -c 'cat > /usr/local/bin/ngrok << "EOF"
 #!/bin/bash
@@ -34,7 +34,7 @@ EOF'
 sudo chmod +x /usr/local/bin/ngrok
 ```
 
-#### Wrapper FFmpeg
+#### FFmpeg wrapper
 ```bash
 sudo bash -c 'cat > /usr/local/bin/ffmpeg << "EOF"
 #!/bin/bash
@@ -43,7 +43,7 @@ EOF'
 sudo chmod +x /usr/local/bin/ffmpeg
 ```
 
-#### Wrapper FFprobe
+#### FFprobe wrapper
 ```bash
 sudo bash -c 'cat > /usr/local/bin/ffprobe << "EOF"
 #!/bin/bash
@@ -52,11 +52,11 @@ EOF'
 sudo chmod +x /usr/local/bin/ffprobe
 ```
 
-**Note** : `ffprobe` snap s'appelle `ffmpeg.ffprobe`
+**Note**: the snap ffprobe binary is named `ffmpeg.ffprobe`.
 
-### 2. Configuration du service systemd
+### 2. systemd service configuration
 
-Modification de `/etc/systemd/system/stemtube.service` pour ajouter la variable `HOME` :
+Edit `/etc/systemd/system/stemtube.service` to add the `HOME` variable:
 
 ```ini
 [Service]
@@ -65,129 +65,106 @@ User=michael
 Group=michael
 WorkingDirectory=/path/to/Documents/Dev/StemTube-dev
 
-# Variables d'environnement critiques
+# Critical environment variables
 Environment="PATH=/path/to/Documents/Dev/StemTube-dev/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="HOME=/path/to"  # ← CRITIQUE pour snap
+Environment="HOME=/path/to"  # IMPORTANT for snap
 Environment="PYTHONUNBUFFERED=1"
 ```
 
-Puis recharger :
+Then reload:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl restart stemtube
 ```
 
-## Vérification
+## Verification
 
-### Tester les wrappers
+### Test the wrappers
 ```bash
-# Vérifier que les wrappers existent
+# Verify the wrappers exist
 ls -la /usr/local/bin/{ngrok,ffmpeg,ffprobe}
 
-# Tester leur fonctionnement
+# Test execution
 /usr/local/bin/ngrok version
 /usr/local/bin/ffmpeg -version
 /usr/local/bin/ffprobe -version
 ```
 
-### Vérifier la configuration ngrok
+### Verify ngrok config
 ```bash
-# Vérifier que l'authtoken est configuré
+# Check that the authtoken is configured
 ngrok config check
 
-# Doit afficher :
+# Should show:
 # Valid configuration file at /path/to/snap/ngrok/315/.config/ngrok/ngrok.yml
 ```
 
-### Tester le service
+### Test the service
 ```bash
-# Redémarrer le service
+# Restart the service
 sudo systemctl restart stemtube
 
-# Vérifier que les deux processus tournent
+# Verify both processes are running
 ps aux | grep -E "(python app.py|ngrok)" | grep -v grep
 
-# Devrait afficher :
+# Should show:
 # michael    XXXXX  ... /snap/ngrok/315/ngrok http --url=...
 # michael    XXXXX  ... python app.py
 
-# Vérifier le tunnel ngrok
-python3 -c "import requests; r=requests.get('http://localhost:4040/api/tunnels'); print('Tunnel actif:', r.json()['tunnels'][0]['public_url'])"
+# Check the ngrok tunnel
+python3 -c "import requests; r=requests.get('http://localhost:4040/api/tunnels'); print('Tunnel active:', r.json()['tunnels'][0]['public_url'])"
 
-# Devrait afficher :
-# Tunnel actif: https://definite-cockatoo-bold.ngrok-free.app
+# Should show:
+# Tunnel active: https://definite-cockatoo-bold.ngrok-free.app
 ```
 
-## Pourquoi cette solution fonctionne
+## Why this works
 
-### Avantages des wrappers
+### Wrapper benefits
 
-1. **Compatibilité PATH** : `/usr/local/bin` est dans le PATH systemd par défaut
-2. **Transparence** : Les scripts peuvent utiliser `ngrok`, `ffmpeg`, etc. naturellement
-3. **Maintenance** : Un seul endroit à modifier si les chemins snap changent
-4. **Flexibilité** : Fonctionne pour tous les utilisateurs du système
+1. **PATH compatibility**: `/usr/local/bin` is in systemd PATH by default
+2. **Transparency**: scripts can use `ngrok`, `ffmpeg`, etc. normally
+3. **Maintenance**: one place to update if snap paths change
+4. **Flexibility**: works for any user running the service
 
-### Importance de HOME
+### Importance of HOME
 
-La variable `HOME` est essentielle pour snap car :
-- Snap utilise des répertoires isolés par utilisateur : `~/snap/app_name/`
-- Sans HOME, snap cherche dans `/root/snap/` (vide si l'utilisateur du service n'est pas root)
-- L'authtoken ngrok est stocké dans `~/snap/ngrok/315/.config/ngrok/ngrok.yml`
+The `HOME` variable is essential for snap because:
+- Snap uses per-user isolated directories: `~/snap/app_name/`
+- Without HOME, snap looks in `/root/snap/` (empty if the service user is not root)
+- The ngrok authtoken is stored at `~/snap/ngrok/315/.config/ngrok/ngrok.yml`
 
-## Applications snap courantes nécessitant cette solution
+## Common snap apps that need this fix
 
-Cette approche fonctionne pour toutes les applications snap lancées via systemd :
-- **ngrok** - Tunnel HTTP/TCP
-- **ffmpeg** - Traitement vidéo/audio
-- **node** - Runtime JavaScript
-- **kubectl** - Client Kubernetes
-- Et tout autre snap nécessitant PATH ou configuration utilisateur
+This approach works for any snap app launched via systemd:
+- **ngrok** - HTTP/TCP tunnel
+- **ffmpeg** - video/audio processing
+- **node** - JavaScript runtime
+- **kubectl** - Kubernetes client
+- And any other snap that needs PATH or user config
 
-## Dépannage
+## Troubleshooting
 
-### Ngrok affiche "Install your authtoken"
+### Ngrok shows "Install your authtoken"
 ```bash
-# Réinstaller l'authtoken
-ngrok config add-authtoken VOTRE_TOKEN
+# Reinstall the authtoken
+ngrok config add-authtoken YOUR_TOKEN
 
-# Vérifier la config
+# Verify config
 ngrok config check
 ```
 
-### FFmpeg : "Permission denied"
+### FFmpeg: "Permission denied"
 ```bash
-# Vérifier les permissions du wrapper
+# Check wrapper permissions
 ls -la /usr/local/bin/ffmpeg
-
-# Doit afficher : -rwxr-xr-x
-# Si non, corriger :
-sudo chmod +x /usr/local/bin/ffmpeg
 ```
 
-### Le service démarre mais ngrok ne tourne pas
+### Service still fails
 ```bash
-# Vérifier les logs ngrok
-tail -50 logs/stemtube_ngrok.log
+# Check service logs
+journalctl -u stemtube -f
 
-# Vérifier que HOME est bien défini dans le service
-grep HOME /etc/systemd/system/stemtube.service
-
-# Doit afficher : Environment="HOME=/path/to"
+# Check PATH from within service
+sudo systemctl show -p Environment stemtube
 ```
-
-## Ressources
-
-- [Snap confinement](https://snapcraft.io/docs/snap-confinement)
-- [Systemd environment variables](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#Environment)
-- [ngrok documentation](https://ngrok.com/docs)
-
-## Historique
-
-- **2025-10-26** : Fix initial appliqué pour ngrok et FFmpeg
-- **Problème** : Applications snap invisibles pour systemd
-- **Solution** : Wrappers + variable HOME
-- **Résultat** : Service 100% fonctionnel avec Flask + ngrok
-
----
-
-**Note** : Ce document sert de référence pour tout problème similaire avec des applications snap dans des services systemd.

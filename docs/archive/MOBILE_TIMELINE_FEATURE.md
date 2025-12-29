@@ -2,13 +2,13 @@
 
 **Date:** November 2025
 **Status:** ✅ Implemented
-**Style:** Modern, épuré, style SoundCloud/YouTube
+**Style:** Modern, clean, SoundCloud/YouTube style
 
 ---
 
 ## 🎯 What Was Added
 
-Une **timeline graduée** au-dessus de la waveform avec marqueurs de temps automatiques et design professionnel.
+A **graduated timeline** above the waveform with automatic time markers and a professional design.
 
 ### Visual Result
 
@@ -29,7 +29,7 @@ Une **timeline graduée** au-dessus de la waveform avec marqueurs de temps autom
 
 ### 1. HTML Structure (`templates/mobile-index.html`)
 
-**Ajouté:**
+**Added:**
 ```html
 <div class="mobile-waveform-container">
     <div class="mobile-waveform-timeline" id="mobileWaveformTimeline">
@@ -44,15 +44,15 @@ Une **timeline graduée** au-dessus de la waveform avec marqueurs de temps autom
 
 ### 2. CSS Styling (`static/css/mobile-style.css`)
 
-**Container agrandi:**
+**Expanded container:**
 ```css
 .mobile-waveform-container {
-    height: 140px; /* +20px pour timeline */
-    padding-top: 20px; /* Espace pour timeline */
+    height: 140px; /* +20px for timeline */
+    padding-top: 20px; /* Space for timeline */
 }
 
 .mobile-waveform {
-    height: calc(100% - 20px); /* Enlève hauteur timeline */
+    height: calc(100% - 20px); /* Remove timeline height */
 }
 ```
 
@@ -95,7 +95,7 @@ Une **timeline graduée** au-dessus de la waveform avec marqueurs de temps autom
 
 ### 3. JavaScript Logic (`static/js/mobile-app.js`)
 
-**Fonction `renderTimeline()`:**
+**`renderTimeline()` function:**
 ```javascript
 renderTimeline() {
     const timeline = document.getElementById('mobileWaveformTimeline');
@@ -103,25 +103,25 @@ renderTimeline() {
 
     timeline.innerHTML = '';
 
-    // Intervalle adaptatif selon la durée
+    // Adaptive interval based on duration
     let interval;
-    if (this.duration < 90) interval = 15;       // 15s pour < 1.5min
-    else if (this.duration < 300) interval = 30; // 30s pour < 5min
-    else if (this.duration < 600) interval = 60; // 1min pour < 10min
-    else interval = 120;                          // 2min pour songs longues
+    if (this.duration < 90) interval = 15;       // 15s for < 1.5min
+    else if (this.duration < 300) interval = 30; // 30s for < 5min
+    else if (this.duration < 600) interval = 60; // 1min for < 10min
+    else interval = 120;                          // 2min for long songs
 
-    // Génère les marqueurs
+    // Generate markers
     const markers = [];
     for (let time = 0; time <= this.duration; time += interval) {
         markers.push(time);
     }
 
-    // Ajoute le temps final
+    // Add final time
     if (markers[markers.length - 1] < this.duration) {
         markers.push(Math.floor(this.duration));
     }
 
-    // Crée les éléments DOM
+    // Create DOM elements
     markers.forEach(time => {
         const marker = document.createElement('div');
         marker.className = 'mobile-timeline-marker';
@@ -140,7 +140,7 @@ renderTimeline() {
 }
 ```
 
-**Appelée automatiquement:**
+**Auto-called:**
 ```javascript
 renderWaveform() {
     // ... render waveform code ...
@@ -155,50 +155,50 @@ renderWaveform() {
 ## 🎨 Design Details
 
 ### Color Scheme
-- **Ticks:** `rgba(255, 255, 255, 0.3)` - Blanc translucide subtil
-- **Labels:** `rgba(255, 255, 255, 0.6)` - Blanc translucide lisible
-- **Text Shadow:** `0 1px 2px rgba(0, 0, 0, 0.8)` - Améliore la lisibilité
+- **Ticks:** `rgba(255, 255, 255, 0.3)` - subtle translucent white
+- **Labels:** `rgba(255, 255, 255, 0.6)` - readable translucent white
+- **Text Shadow:** `0 1px 2px rgba(0, 0, 0, 0.8)` - improves readability
 
 ### Typography
-- **Font Size:** 9px - Compact mais lisible
-- **Font Weight:** 500 - Medium pour meilleure lisibilité
-- **Text Shadow:** Pour contraste sur waveform verte
+- **Font Size:** 9px - compact but readable
+- **Font Weight:** 500 - medium weight for clarity
+- **Text Shadow:** contrast on the green waveform
 
 ### Spacing
-- **Tick Height:** 6px - Assez visible sans être trop imposant
-- **Tick Width:** 1px - Ligne fine et élégante
-- **Timeline Height:** 20px - Juste assez pour tick + label
-- **Margin Bottom (tick):** 2px - Espace entre tick et label
+- **Tick Height:** 6px - visible without being heavy
+- **Tick Width:** 1px - thin and elegant
+- **Timeline Height:** 20px - enough for tick + label
+- **Margin Bottom (tick):** 2px - space between tick and label
 
 ### Positioning
-- **Timeline:** `z-index: 3` - Au-dessus de waveform et progress
-- **Pointer Events:** `none` - N'interfère pas avec les clics
-- **First/Last Labels:** Alignés aux bords (transform: translateX)
+- **Timeline:** `z-index: 3` - above waveform and progress
+- **Pointer Events:** `none` - does not interfere with clicks
+- **First/Last Labels:** aligned to edges (transform: translateX)
 
 ---
 
 ## 🔧 Smart Interval Calculation
 
-Le système adapte automatiquement l'intervalle selon la durée:
+The system automatically adapts the interval to the duration:
 
-| Durée | Intervalle | Exemple |
-|-------|------------|---------|
+| Duration | Interval | Example |
+|----------|----------|---------|
 | < 1.5 min | 15s | 0:00, 0:15, 0:30, 0:45, 1:00 |
 | 1.5-5 min | 30s | 0:00, 0:30, 1:00, 1:30, 2:00 |
 | 5-10 min | 1 min | 0:00, 1:00, 2:00, 3:00, 4:00 |
 | > 10 min | 2 min | 0:00, 2:00, 4:00, 6:00, 8:00 |
 
-**Avantages:**
-- ✅ Pas trop de marqueurs sur courtes chansons
-- ✅ Pas trop peu de marqueurs sur longues chansons
-- ✅ Toujours lisible et proportionné
-- ✅ Temps final toujours affiché
+**Benefits:**
+- ✅ Not too many markers on short songs
+- ✅ Not too few markers on long songs
+- ✅ Always readable and proportional
+- ✅ Final time always shown
 
 ---
 
 ## 📊 Console Logs
 
-Lors du rendu de la timeline:
+When rendering the timeline:
 
 ```
 [Timeline] Rendering with 30 s interval for duration 135.5
@@ -219,32 +219,32 @@ Lors du rendu de la timeline:
 │ ●═══════────────────────────────── │
 └─────────────────────────────────────┘
 ```
-❌ Pas de repères temporels
-❌ Difficile de savoir où on est dans la chanson
+❌ No time markers
+❌ Hard to see where you are in the song
 
 ### After
 ```
 ┌─────────────────────────────────────┐
-│ 0:00    0:30    1:00    1:30   2:00 │ ✓ Repères clairs
-│  |       |       |       |       |  │ ✓ Visuellement léger
+│ 0:00    0:30    1:00    1:30   2:00 │ ✓ Clear markers
+│  |       |       |       |       |  │ ✓ Visually light
 ├─────────────────────────────────────┤
 │ ▁▃▅▇▅▃▁ ▃▇█▇▃ ▁▃▅▇▅▃▁             │ ✓ Waveform intact
 │                                     │
 │ ●═══════────────────────────────── │ ✓ Progress visible
 └─────────────────────────────────────┘
 ```
-✅ Repères temporels précis
-✅ Navigation visuelle intuitive
-✅ Design moderne et professionnel
+✅ Precise time markers
+✅ Intuitive visual navigation
+✅ Modern, professional design
 
 ---
 
 ## 🧪 Testing
 
-1. **Rechargez la page mobile** (Ctrl+F5)
-2. **Ouvrez un mixer**
-3. **Vérifiez la timeline** au-dessus de la waveform
-4. **Logs console:**
+1. **Reload the mobile page** (Ctrl+F5)
+2. **Open a mixer**
+3. **Check the timeline** above the waveform
+4. **Console logs:**
    ```
    [Timeline] Rendering with 30 s interval for duration 245.5
    [Timeline] Creating 9 markers: [0, 30, 60, 90, ...]
@@ -252,26 +252,26 @@ Lors du rendu de la timeline:
    ```
 
 ### Expected Visual:
-- ✅ Petits ticks verticaux blancs translucides
-- ✅ Labels de temps (0:00, 0:30, 1:00, etc.)
-- ✅ Espacement uniforme
-- ✅ Alignement parfait avec la waveform
+- ✅ Small translucent white vertical ticks
+- ✅ Time labels (0:00, 0:30, 1:00, etc.)
+- ✅ Even spacing
+- ✅ Perfect alignment with the waveform
 
 ---
 
 ## 💡 Technical Insights
 
 ### Why `pointer-events: none`?
-Permet aux clics de passer à travers la timeline vers la waveform/progress bar en dessous.
+Allows clicks to pass through the timeline to the waveform/progress bar below.
 
 ### Why `text-shadow`?
-Améliore la lisibilité des labels blancs sur la waveform verte.
+Improves readability of white labels on the green waveform.
 
 ### Why `justify-content: space-between`?
-Distribue automatiquement les marqueurs uniformément sur toute la largeur.
+Automatically distributes markers evenly across the full width.
 
 ### Why smart intervals?
-Évite d'avoir 50 marqueurs sur une chanson de 10 minutes (illisible) ou 2 marqueurs sur une chanson de 1 minute (pas assez d'info).
+Avoids 50 markers on a 10-minute song (unreadable) or 2 markers on a 1-minute song (not enough info).
 
 ---
 
@@ -289,15 +289,15 @@ Distribue automatiquement les marqueurs uniformément sur toute la largeur.
 
 ## 🎉 Result
 
-**La waveform mobile a maintenant:**
-- ✅ Timeline graduée automatique
-- ✅ Marqueurs de temps adaptifs
-- ✅ Design moderne et épuré
-- ✅ Cohérent avec l'interface globale
-- ✅ Style SoundCloud/YouTube professionnel
+**The mobile waveform now has:**
+- ✅ Automatic graduated timeline
+- ✅ Adaptive time markers
+- ✅ Modern, clean design
+- ✅ Consistent with the overall interface
+- ✅ Professional SoundCloud/YouTube style
 
 **Perfect for mobile music mixing!** 🎵✨
 
 ---
 
-**Prêt pour les tests!** 🚀
+**Ready for testing!** 🚀

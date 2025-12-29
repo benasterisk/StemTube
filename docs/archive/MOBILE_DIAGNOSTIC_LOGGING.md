@@ -10,15 +10,15 @@
 
 ### 1. **Backend Logging Integration** ✅
 
-Tous les logs console du navigateur mobile sont maintenant envoyés au backend et enregistrés dans les fichiers de log.
+All mobile browser console logs are now sent to the backend and written to log files.
 
-**Système:**
-- Interception de `console.log()`, `console.error()`, `console.warn()`
-- Batching des logs (envoi toutes les 2 secondes)
+**System:**
+- Intercepts `console.log()`, `console.error()`, `console.warn()`
+- Log batching (send every 2 seconds)
 - Endpoint: `POST /api/logs/browser`
-- Silent fail si le logging échoue (ne casse pas l'app)
+- Silent fail if logging breaks (does not crash the app)
 
-**Code ajouté:**
+**Code added:**
 ```javascript
 setupBrowserLogging() {
     const originalLog = console.log;
@@ -29,7 +29,7 @@ setupBrowserLogging() {
         originalLog.apply(console, args);
         this.sendLogToBackend('info', args.join(' '));
     };
-    // ... même chose pour error et warn
+    // ... same for error and warn
 }
 
 sendLogToBackend(level, message) {
@@ -54,7 +54,7 @@ sendLogToBackend(level, message) {
 
 ### 2. **Comprehensive Stem Loading Logs** ✅
 
-Chaque étape du chargement des stems est maintenant loggée en détail.
+Each step of stem loading is now logged in detail.
 
 #### **loadMixerData() - Master Control**
 ```

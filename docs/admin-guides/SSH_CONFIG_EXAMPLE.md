@@ -1,107 +1,107 @@
-# Configuration SSH pour la Migration
+# SSH Configuration for Migration
 
-## Objectif
+## Goal
 
-Faciliter la connexion à votre ancienne machine de production en configurant un alias SSH.
+Make it easy to connect to your old production machine by setting up an SSH alias.
 
-## Méthode 1: Fichier ~/.ssh/config (Recommandée)
+## Method 1: ~/.ssh/config (Recommended)
 
-Cette méthode vous permet de vous connecter simplement avec `ssh old-prod` au lieu de taper l'adresse complète.
+This lets you connect with `ssh old-prod` instead of typing the full address.
 
-### 1. Créer/Éditer le fichier de configuration SSH
+### 1. Create/Edit the SSH config file
 
 ```bash
 nano ~/.ssh/config
 ```
 
-### 2. Ajouter cette configuration
+### 2. Add this configuration
 
 ```
-# Ancienne machine de production StemTube
+# Old StemTube production machine
 Host old-prod
-    HostName 192.168.1.100         # ← Remplacer par l'IP ou hostname réel
-    User root                       # ← Remplacer par votre username
-    Port 22                         # ← Changer si SSH n'est pas sur le port 22
-    IdentityFile ~/.ssh/id_rsa     # ← Chemin vers votre clé privée (optionnel)
-    ServerAliveInterval 60          # Maintient la connexion active
+    HostName 192.168.1.100         # Replace with the real IP or hostname
+    User root                       # Replace with your username
+    Port 22                         # Change if SSH is not on port 22
+    IdentityFile ~/.ssh/id_rsa      # Path to your private key (optional)
+    ServerAliveInterval 60          # Keep the connection alive
     ServerAliveCountMax 3
 ```
 
-### 3. Sauvegarder et ajuster les permissions
+### 3. Save and fix permissions
 
 ```bash
-# Sauvegarder le fichier (Ctrl+X, puis Y, puis Entrée dans nano)
+# Save the file (Ctrl+X, then Y, then Enter in nano)
 
-# Ajuster les permissions (important!)
+# Fix permissions (important)
 chmod 600 ~/.ssh/config
 ```
 
-### 4. Tester la connexion
+### 4. Test the connection
 
 ```bash
-# Se connecter avec l'alias
+# Connect using the alias
 ssh old-prod
 
-# Si ça fonctionne, vous pouvez maintenant utiliser:
+# If it works, you can now use:
 # - ssh old-prod
 # - rsync -avh old-prod:/path/to/file ./
 # - scp old-prod:/path/to/file ./
 ```
 
-### 5. Mise à jour du script de migration
+### 5. Update the migration script
 
-Une fois l'alias configuré, éditez `migrate_from_old_prod.sh`:
+Once the alias is set, edit `migrate_from_old_prod.sh`:
 
 ```bash
-# Changer cette ligne:
+# Change this line:
 OLD_PROD_HOST="user@old-prod-server.com"
 
-# En:
+# To:
 OLD_PROD_HOST="old-prod"
 ```
 
-C'est tout! 🎉
+That is it.
 
 ---
 
-## Méthode 2: Clés SSH (Si vous n'avez pas encore configuré)
+## Method 2: SSH Keys (if not configured yet)
 
-Si vous ne pouvez pas vous connecter par clé SSH, suivez ces étapes:
+If you cannot connect with a key yet, follow these steps:
 
-### 1. Générer une paire de clés (si vous n'en avez pas)
+### 1. Generate a key pair (if you do not have one)
 
 ```bash
-# Générer une nouvelle clé RSA
-ssh-keygen -t rsa -b 4096 -C "votre_email@example.com"
+# Generate a new RSA key
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 
-# Appuyer sur Entrée pour accepter l'emplacement par défaut
-# (Optionnel) Entrer une passphrase pour plus de sécurité
+# Press Enter to accept default location
+# (Optional) Enter a passphrase for extra security
 ```
 
-### 2. Copier votre clé publique vers l'ancienne machine
+### 2. Copy your public key to the old machine
 
 ```bash
-# Méthode automatique (recommandée)
+# Automatic method (recommended)
 ssh-copy-id user@old-prod-server.com
 
-# OU Méthode manuelle
+# OR manual method
 cat ~/.ssh/id_rsa.pub | ssh user@old-prod-server.com "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 ```
 
-### 3. Tester la connexion sans mot de passe
+### 3. Test passwordless login
 
 ```bash
 ssh user@old-prod-server.com
-# Devrait se connecter sans demander de mot de passe!
+# Should connect without asking for a password
 ```
 
 ---
 
-## Méthode 3: Connexion par mot de passe (Moins sécurisé)
+## Method 3: Password login (less secure)
 
-Si vous préférez utiliser un mot de passe, vous pouvez utiliser `sshpass`:
+If you prefer a password, you can use `sshpass`:
 
-### Installation
+### Install
 
 ```bash
 # Ubuntu/Debian
@@ -111,25 +111,25 @@ sudo apt-get install sshpass
 brew install hudochenkov/sshpass/sshpass
 ```
 
-### Utilisation dans le script
+### Use in the script
 
-**ATTENTION:** Stocker des mots de passe en clair est dangereux!
+**Warning:** Storing passwords in plain text is risky.
 
 ```bash
-# Créer un fichier sécurisé pour le mot de passe
-echo "VotreMotDePasse" > ~/.ssh/old_prod_password
+# Create a protected password file
+echo "YourPassword" > ~/.ssh/old_prod_password
 chmod 600 ~/.ssh/old_prod_password
 
-# Utiliser dans les commandes rsync
+# Use in rsync commands
 sshpass -f ~/.ssh/old_prod_password rsync -avh \
   user@old-prod:/path/to/file ./
 ```
 
 ---
 
-## Exemples de Configuration selon votre Environnement
+## Configuration Examples by Environment
 
-### Exemple 1: Serveur local sur le même réseau
+### Example 1: Local server on the same network
 
 ```
 Host old-prod
@@ -138,7 +138,7 @@ Host old-prod
     Port 22
 ```
 
-### Exemple 2: Serveur distant avec domaine
+### Example 2: Remote server with domain
 
 ```
 Host old-prod
@@ -148,7 +148,7 @@ Host old-prod
     IdentityFile ~/.ssh/id_rsa
 ```
 
-### Exemple 3: Serveur derrière un jump host (bastion)
+### Example 3: Server behind a jump host (bastion)
 
 ```
 Host old-prod
@@ -158,78 +158,78 @@ Host old-prod
     ProxyJump bastion-server.com
 ```
 
-### Exemple 4: Serveur avec port SSH personnalisé
+### Example 4: Server with custom SSH port
 
 ```
 Host old-prod
     HostName prod.example.com
     User admin
-    Port 2222                    # SSH sur un port différent
+    Port 2222                    # SSH on a different port
     IdentityFile ~/.ssh/prod_key
 ```
 
 ---
 
-## Résolution de Problèmes
+## Troubleshooting
 
-### Erreur: "Permission denied (publickey)"
+### Error: "Permission denied (publickey)"
 
-**Cause:** Votre clé publique n'est pas autorisée sur le serveur.
+**Cause:** Your public key is not authorized on the server.
 
-**Solution:**
+**Fix:**
 ```bash
-# Vérifier que votre clé est bien présente
+# Verify your key is loaded
 ssh-add -l
 
-# Ajouter votre clé si nécessaire
+# Add your key if needed
 ssh-add ~/.ssh/id_rsa
 
-# Re-copier la clé vers le serveur
+# Re-copy the key to the server
 ssh-copy-id -i ~/.ssh/id_rsa.pub user@old-prod-server.com
 ```
 
-### Erreur: "Connection timeout"
+### Error: "Connection timeout"
 
-**Cause:** Le serveur n'est pas accessible ou le firewall bloque.
+**Cause:** The server is unreachable or a firewall is blocking.
 
-**Solution:**
+**Fix:**
 ```bash
-# Tester la connectivité réseau
+# Test network connectivity
 ping old-prod-server.com
 
-# Tester si le port SSH est ouvert
+# Test if SSH port is open
 telnet old-prod-server.com 22
-# OU
+# OR
 nc -zv old-prod-server.com 22
 
-# Si timeout, vérifier:
-# 1. Le serveur est allumé
-# 2. Le firewall autorise le port 22
-# 3. L'adresse IP/hostname est correct
+# If timeout, check:
+# 1. The server is up
+# 2. Firewall allows port 22
+# 3. IP/hostname is correct
 ```
 
-### Erreur: "Host key verification failed"
+### Error: "Host key verification failed"
 
-**Cause:** La signature SSH du serveur a changé.
+**Cause:** The server SSH signature changed.
 
-**Solution:**
+**Fix:**
 ```bash
-# Supprimer l'ancienne signature
+# Remove the old signature
 ssh-keygen -R old-prod-server.com
 
-# OU éditer manuellement
+# OR edit manually
 nano ~/.ssh/known_hosts
-# Supprimer la ligne correspondante
+# Delete the matching line
 
-# Reconnectez-vous et acceptez la nouvelle signature
+# Reconnect and accept the new signature
 ssh user@old-prod-server.com
 ```
 
-### Erreur: "Bad owner or permissions on ~/.ssh/config"
+### Error: "Bad owner or permissions on ~/.ssh/config"
 
-**Cause:** Permissions trop permissives sur le fichier de configuration.
+**Cause:** Config file permissions are too open.
 
-**Solution:**
+**Fix:**
 ```bash
 chmod 600 ~/.ssh/config
 chmod 700 ~/.ssh
@@ -237,62 +237,62 @@ chmod 700 ~/.ssh
 
 ---
 
-## Commandes Utiles
+## Useful Commands
 
-### Tester la connexion SSH avec verbose
+### Test SSH connection with verbose output
 
 ```bash
 ssh -v user@old-prod-server.com
-# Affiche tous les détails de la connexion
+# Shows full connection details
 ```
 
-### Lister les clés SSH disponibles
+### List available SSH keys
 
 ```bash
 ls -la ~/.ssh/
-# Vous devriez voir: id_rsa (privée) et id_rsa.pub (publique)
+# You should see: id_rsa (private) and id_rsa.pub (public)
 ```
 
-### Vérifier la configuration SSH
+### Check SSH configuration
 
 ```bash
 ssh -G old-prod
-# Affiche la configuration complète qui sera utilisée
+# Shows the full config that will be used
 ```
 
-### Copier un fichier rapidement
+### Copy a file quickly
 
 ```bash
-# Avec scp
-scp old-prod:/chemin/source /chemin/destination
+# With scp
+scp old-prod:/path/source /path/destination
 
-# Avec rsync (meilleur pour les gros fichiers)
-rsync -avh --progress old-prod:/chemin/source /chemin/destination
+# With rsync (better for large files)
+rsync -avh --progress old-prod:/path/source /path/destination
 ```
 
 ---
 
-## Checklist Avant Migration
+## Pre-Migration Checklist
 
-- [ ] Je peux me connecter à l'ancienne machine: `ssh old-prod`
-- [ ] J'ai configuré l'alias SSH dans `~/.ssh/config`
-- [ ] J'ai testé `rsync` avec un petit fichier de test
-- [ ] J'ai vérifié l'espace disque disponible sur la nouvelle machine
-- [ ] J'ai mis à jour `OLD_PROD_HOST` dans `migrate_from_old_prod.sh`
-- [ ] J'ai vérifié que l'application est arrêtée
-- [ ] J'ai fait un backup de mes données actuelles (au cas où)
+- [ ] I can connect to the old machine: `ssh old-prod`
+- [ ] I configured the SSH alias in `~/.ssh/config`
+- [ ] I tested `rsync` with a small file
+- [ ] I verified available disk space on the new machine
+- [ ] I updated `OLD_PROD_HOST` in `migrate_from_old_prod.sh`
+- [ ] I verified the app is stopped
+- [ ] I backed up current data (just in case)
 
-Une fois tous ces points validés, lancez:
+Once all items are done, run:
 ```bash
 ./migrate_from_old_prod.sh
 ```
 
 ---
 
-**Astuce Pro:** Une fois la migration terminée et validée, pensez à désactiver l'accès SSH à l'ancienne machine pour des raisons de sécurité!
+**Pro tip:** After migration is validated, consider disabling SSH access to the old machine for security.
 
 ```bash
-# Sur l'ancienne machine
+# On the old machine
 sudo systemctl stop ssh
 sudo systemctl disable ssh
 ```

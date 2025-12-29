@@ -2,35 +2,35 @@
 
 ## Overview
 
-**faster-whisper** est utilisé dans StemTube pour la transcription automatique des paroles (karaoke/lyrics). C'est une implémentation optimisée d'OpenAI Whisper utilisant CTranslate2 pour des performances 4x plus rapides.
+**faster-whisper** is used in StemTube for automatic lyrics transcription (karaoke/lyrics). It is an optimized implementation of OpenAI Whisper using CTranslate2 for ~4x faster performance.
 
 ## Installation
 
-### Automatique (Recommandé)
+### Automatic (Recommended)
 
-Le script `setup_dependencies.py` installe automatiquement faster-whisper et ses dépendances :
+The `setup_dependencies.py` script installs faster-whisper and its dependencies automatically:
 
 ```bash
 python setup_dependencies.py
 ```
 
-Le script :
-1. ✓ Détecte la présence d'un GPU NVIDIA
-2. ✓ Installe faster-whisper depuis requirements.txt
-3. ✓ Installe cuDNN pour le support GPU (si GPU disponible)
-4. ✓ Vérifie que faster-whisper fonctionne
+The script:
+1. ✓ Detects an NVIDIA GPU
+2. ✓ Installs faster-whisper from requirements.txt
+3. ✓ Installs cuDNN for GPU support (if GPU available)
+4. ✓ Verifies that faster-whisper runs
 
-### Manuelle
+### Manual
 
-Si vous devez installer manuellement :
+If you need to install manually:
 
 ```bash
-# Activer le venv
+# Activate the venv
 source venv/bin/activate  # Linux/Mac
-# ou
+# or
 venv\Scripts\activate     # Windows
 
-# Installer faster-whisper et dépendances
+# Install faster-whisper and dependencies
 pip install faster-whisper>=1.0.0
 pip install ctranslate2>=4.0.0
 pip install av>=10.0.0
@@ -38,34 +38,34 @@ pip install huggingface-hub>=0.13.0
 pip install tokenizers>=0.13.0
 pip install onnxruntime>=1.14.0
 
-# Pour GPU: installer cuDNN
+# For GPU: install cuDNN
 pip install nvidia-cudnn-cu11
 ```
 
-## Dépendances
+## Dependencies
 
 ### Core Dependencies (requirements.txt)
 
 ```
-faster-whisper>=1.0.0     # Package principal
-ctranslate2>=4.0.0        # Backend d'inférence optimisé
-av>=10.0.0                # Décodage audio/vidéo (PyAV)
-huggingface-hub>=0.13.0   # Téléchargement des modèles
-tokenizers>=0.13.0        # Tokenization du texte
-onnxruntime>=1.14.0       # Runtime pour certains modèles
+faster-whisper>=1.0.0     # Primary package
+ctranslate2>=4.0.0        # Optimized inference backend
+av>=10.0.0                # Audio/video decoding (PyAV)
+huggingface-hub>=0.13.0   # Model downloads
+tokenizers>=0.13.0        # Text tokenization
+onnxruntime>=1.14.0       # Runtime for some models
 ```
 
-### GPU Dependencies (optionnel)
+### GPU Dependencies (optional)
 
 ```
-nvidia-cudnn-cu11         # NVIDIA cuDNN pour accélération GPU
+nvidia-cudnn-cu11         # NVIDIA cuDNN for GPU acceleration
 ```
 
-**Note**: cuDNN est installé automatiquement par `setup_dependencies.py` si un GPU NVIDIA est détecté.
+**Note**: cuDNN is installed automatically by `setup_dependencies.py` if an NVIDIA GPU is detected.
 
-## Configuration GPU
+## GPU Configuration
 
-### Vérifier le support GPU
+### Verify GPU Support
 
 ```bash
 ./venv/bin/python -c "
@@ -78,35 +78,35 @@ except Exception as e:
 "
 ```
 
-### Variables d'environnement
+### Environment Variables
 
-Le script `start_service.sh` configure automatiquement le chemin cuDNN :
+The `start_service.sh` script automatically configures the cuDNN path:
 
 ```bash
 export LD_LIBRARY_PATH="$VENV_SITE_PACKAGES/nvidia/cudnn/lib:$LD_LIBRARY_PATH"
 ```
 
-Ceci est nécessaire pour que faster-whisper trouve les bibliothèques cuDNN.
+This is required so faster-whisper can find the cuDNN libraries.
 
-## Utilisation dans StemTube
+## Usage in StemTube
 
 ### Code Example
 
 ```python
 from core.lyrics_detector import LyricsDetector
 
-# Initialiser le détecteur (GPU auto-détecté)
+# Initialize detector (GPU auto-detected)
 detector = LyricsDetector()
 
-# Transcrire un fichier audio
+# Transcribe an audio file
 audio_path = "path/to/audio.mp3"
 lyrics_data = detector.transcribe_audio(
     audio_path,
     model_size="medium",  # tiny, base, small, medium, large, large-v3
-    language="en"         # ou None pour auto-détection
+    language="en"         # or None for auto-detect
 )
 
-# Format du résultat
+# Result format
 # [
 #   {
 #     "start": 0.0,
@@ -121,153 +121,153 @@ lyrics_data = detector.transcribe_audio(
 # ]
 ```
 
-### Modèles disponibles
+### Available Models
 
-| Modèle    | Taille | Mémoire GPU | Vitesse | Précision |
-|-----------|--------|-------------|---------|-----------|
-| tiny      | 39M    | ~1GB        | ~32x    | ★★☆☆☆     |
-| base      | 74M    | ~1GB        | ~16x    | ★★★☆☆     |
-| small     | 244M   | ~2GB        | ~6x     | ★★★★☆     |
-| medium    | 769M   | ~5GB        | ~2x     | ★★★★★     |
-| large-v2  | 1550M  | ~10GB       | ~1x     | ★★★★★★    |
-| large-v3  | 1550M  | ~10GB       | ~1x     | ★★★★★★    |
+| Model    | Size  | GPU Memory | Speed | Accuracy |
+|----------|-------|------------|-------|----------|
+| tiny     | 39M   | ~1GB       | ~32x  | ★★☆☆☆    |
+| base     | 74M   | ~1GB       | ~16x  | ★★★☆☆    |
+| small    | 244M  | ~2GB       | ~6x   | ★★★★☆    |
+| medium   | 769M  | ~5GB       | ~2x   | ★★★★★    |
+| large-v2 | 1550M | ~10GB      | ~1x   | ★★★★★★   |
+| large-v3 | 1550M | ~10GB      | ~1x   | ★★★★★★   |
 
-**Recommandé pour production**: `medium` (bon équilibre précision/performance)
+**Recommended for production**: `medium` (best accuracy/performance balance)
 
 ## Performance
 
 ### GPU vs CPU
 
-| Configuration           | Temps (3min audio) |
-|------------------------|-------------------|
-| CPU (8 cores)          | ~60-120 secondes  |
-| GPU (NVIDIA RTX)       | ~10-30 secondes   |
+| Configuration          | Time (3 min audio) |
+|------------------------|--------------------|
+| CPU (8 cores)          | ~60-120 seconds    |
+| GPU (NVIDIA RTX)       | ~10-30 seconds     |
 
-**Speedup GPU**: 4-8x plus rapide que CPU
+**GPU speedup**: 4-8x faster than CPU
 
-### Optimisations
+### Optimizations
 
-1. **Compute Type GPU**:
-   - `float16`: Plus rapide, précision légèrement réduite (recommandé)
-   - `int8_float16`: Encore plus rapide, précision un peu plus réduite
-   - `float32`: Maximum de précision, plus lent
+1. **GPU Compute Type**:
+   - `float16`: Faster, slightly reduced accuracy (recommended)
+   - `int8_float16`: Even faster, more accuracy loss
+   - `float32`: Max accuracy, slower
 
-2. **Compute Type CPU**:
-   - `int8`: Recommandé pour CPU (bon équilibre)
-   - `float32`: Maximum de précision, plus lent
+2. **CPU Compute Type**:
+   - `int8`: Recommended for CPU (good balance)
+   - `float32`: Max accuracy, slower
 
 3. **VAD (Voice Activity Detection)**:
-   - Activé par défaut dans StemTube
-   - Filtre les segments sans voix (améliore la précision)
+   - Enabled by default in StemTube
+   - Filters non-voice segments (improves accuracy)
 
-## Dépannage
+## Troubleshooting
 
-### Erreur: "Could not load library libcudnn"
+### Error: "Could not load library libcudnn"
 
-**Solution**: Vérifier que cuDNN est installé et que LD_LIBRARY_PATH est configuré
+**Fix**: Verify cuDNN is installed and LD_LIBRARY_PATH is set.
 
 ```bash
-# Vérifier l'installation
+# Check installation
 pip list | grep cudnn
 
-# Devrait afficher:
+# Should show:
 # nvidia-cudnn-cu11  9.x.x.xx
 
-# Vérifier le chemin
+# Check library path
 ls venv/lib/python3.12/site-packages/nvidia/cudnn/lib/
 
-# Devrait contenir: libcudnn*.so*
+# Should contain: libcudnn*.so*
 ```
 
-Si absent, réinstaller :
+If missing, reinstall:
 ```bash
 pip install --force-reinstall nvidia-cudnn-cu11
 ```
 
-### Erreur: "CUDA out of memory"
+### Error: "CUDA out of memory"
 
-**Solutions**:
-1. Utiliser un modèle plus petit (`tiny`, `base`, `small`)
-2. Réduire le compute_type (essayer `int8_float16`)
-3. Fallback sur CPU:
+**Fixes**:
+1. Use a smaller model (`tiny`, `base`, `small`)
+2. Reduce compute_type (try `int8_float16`)
+3. Fallback to CPU:
    ```python
    model = WhisperModel('medium', device='cpu', compute_type='int8')
    ```
 
-### Le GPU n'est pas utilisé
+### GPU not being used
 
-**Vérifications**:
+**Checks**:
 ```bash
-# 1. Vérifier CUDA
+# 1. Check CUDA
 nvidia-smi
 
-# 2. Vérifier PyTorch CUDA
+# 2. Check PyTorch CUDA
 python -c "import torch; print(torch.cuda.is_available())"
 
-# 3. Vérifier faster-whisper
+# 3. Check faster-whisper
 python -c "from faster_whisper import WhisperModel; m = WhisperModel('tiny', device='cuda'); print('OK')"
 ```
 
-### Performance lente même avec GPU
+### Slow performance even with GPU
 
-**Causes possibles**:
-1. Premier run: Le modèle doit être téléchargé (~769MB pour medium)
-2. Cache de modèle non utilisé: Vérifier `~/.cache/huggingface/hub/`
-3. GPU sous-utilisé: Monitorer avec `nvidia-smi -l 1` pendant la transcription
+**Possible causes**:
+1. First run: the model must download (~769MB for medium)
+2. Model cache not used: verify `~/.cache/huggingface/hub/`
+3. GPU underutilized: monitor with `nvidia-smi -l 1` during transcription
 
-## Stockage des modèles
+## Model Storage
 
-Les modèles sont téléchargés et cachés dans :
+Models are downloaded and cached in:
 ```
 ~/.cache/huggingface/hub/models--guillaumekln--faster-whisper-{model_size}/
 ```
 
-### Pré-télécharger les modèles
+### Pre-download Models
 
 ```python
 from faster_whisper import WhisperModel
 
-# Télécharger sans instancier
+# Download without instantiating
 for model_size in ["tiny", "base", "small", "medium"]:
     print(f"Downloading {model_size}...")
     WhisperModel(model_size, device="cpu")
     print(f"✓ {model_size} cached")
 ```
 
-## Intégration avec StemTube
+## Integration with StemTube
 
-### Workflow automatique
+### Automatic Workflow
 
-1. **Téléchargement audio** → `DownloadManager.download_audio()`
-2. **Détection lyrics automatique** → `LyricsDetector.transcribe_audio()`
-3. **Stockage en BDD** → `global_downloads.lyrics_data` (JSON)
-4. **Affichage mixer** → `karaoke-display.js` (synchronisation playback)
+1. **Audio download** → `DownloadManager.download_audio()`
+2. **Automatic lyrics detection** → `LyricsDetector.transcribe_audio()`
+3. **DB storage** → `global_downloads.lyrics_data` (JSON)
+4. **Mixer display** → `karaoke-display.js` (playback sync)
 
-### Configuration dans app.py
+### Configuration in app.py
 
 ```python
 # core/config.json
 {
-    "use_gpu_for_extraction": true  # Contrôle aussi faster-whisper GPU
+    "use_gpu_for_extraction": true  # Also controls faster-whisper GPU
 }
 ```
 
-## Ressources
+## Resources
 
-- [GitHub faster-whisper](https://github.com/guillaumekln/faster-whisper)
+- [faster-whisper GitHub](https://github.com/guillaumekln/faster-whisper)
 - [CTranslate2](https://github.com/OpenNMT/CTranslate2)
 - [OpenAI Whisper](https://github.com/openai/whisper)
 - [Hugging Face Models](https://huggingface.co/guillaumekln)
 
-## Version installée
+## Installed Version
 
 ```bash
 ./venv/bin/pip show faster-whisper
 ```
 
-**Version actuelle**: 1.2.0
-**Dernière vérification**: 2025-10-26
+**Current version**: 1.2.0
+**Last checked**: 2025-10-26
 
 ---
 
-**Note**: faster-whisper est un composant optionnel mais recommandé pour la fonctionnalité karaoke de StemTube. L'application fonctionne sans, mais la transcription automatique des paroles ne sera pas disponible.
+**Note**: faster-whisper is optional but recommended for StemTube karaoke features. The app runs without it, but automatic lyrics transcription will be unavailable.

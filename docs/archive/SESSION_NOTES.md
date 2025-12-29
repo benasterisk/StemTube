@@ -139,7 +139,7 @@
 **Recent Features**:
 1. ✅ Professional chord detection (madmom CRF)
 2. ✅ Lyrics/Karaoke display (faster-whisper)
-3. ✅ Structure analysis backend simplifié (MSAF uniquement)
+3. ✅ Structure analysis backend simplified (MSAF only)
 4. ✅ Structure display frontend (NEW - just completed)
 5. ✅ Global library system
 6. ✅ Admin cleanup tools
