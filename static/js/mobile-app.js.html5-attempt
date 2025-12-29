@@ -1,0 +1,1426 @@
+/**
+ * StemTube Mobile Application
+ * Optimized mobile interface with iOS audio sync fix
+ */
+
+class MobileApp {
+    constructor() {
+        this.socket = null;
+        this.currentPage = 'search';
+        this.currentExtractionId = null;
+        this.currentMixerTab = 'controls';
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.duration = 0;
+        this.tracks = {};
+        this.chords = [];
+        this.lyrics = [];
+        this.currentAudioUrl = '';
+
+        // HTML5 Audio Engine (iOS/Android compatible)
+        this.audioElements = {}; // { vocals: {audio, volume, muted, solo}, ... }
+        this.masterVolume = 1.0;
+        this.syncInterval = null;
+
+        // Animation frame for smooth updates
+        this.animationFrame = null;
+
+        // Pitch/Tempo control state
+        this.currentPitchSemitones = 0;
+        this.currentTempo = 1.0;
+        this.soundTouchNode = null;
+        this.useFallbackPitchTempo = false;
+
+        this.init();
+    }
+
+    async init() {
+        console.log('[MobileApp] Initializing...');
+
+        // Initialize Socket.IO
+        this.initSocket();
+
+        // Setup event listeners
+        this.setupNavigation();
+        this.setupSearch();
+        this.setupMixer();
+
+        // Load initial data
+        await this.loadLibrary();
+
+        console.log('[MobileApp] Initialized (HTML5 Audio Engine)');
+    }
+
+    initSocket() {
+        this.socket = io();
+
+        this.socket.on('connect', () => {
+            console.log('[Socket] Connected');
+        });
+
+        this.socket.on('download_complete', (data) => {
+            console.log('[Socket] Download complete:', data);
+            this.loadLibrary();
+        });
+
+        this.socket.on('extraction_complete', (data) => {
+            console.log('[Socket] Extraction complete:', data);
+            this.loadLibrary();
+        });
+    }
+
+
+    /* ==================== NAVIGATION ==================== */
+
+    setupNavigation() {
+        // Bottom navigation
+        const navButtons = document.querySelectorAll('.mobile-nav-btn');
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                this.navigateTo(page);
+            });
+        });
+
+        // Mixer back button
+        const backBtn = document.getElementById('mobileMixerBack');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                this.navigateTo('library');
+                this.stopPlayback();
+            });
+        }
+
+        // Mixer tabs
+        const mixerTabs = document.querySelectorAll('.mobile-mixer-tab');
+        mixerTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.mixerTab;
+                this.switchMixerTab(tabName);
+            });
+        });
+    }
+
+    navigateTo(page) {
+        console.log('[Navigation] Navigating to:', page);
+
+        // Hide all pages
+        document.querySelectorAll('.mobile-page').forEach(p => p.classList.remove('active'));
+
+        // Hide all nav buttons active state
+        document.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
+
+        // Show target page
+        const targetPage = document.getElementById(`mobile${this.capitalizeFirst(page)}Page`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        } else {
+            console.error('[Navigation] Page not found:', `mobile${this.capitalizeFirst(page)}Page`);
+        }
+
+        // Activate nav button
+        const targetBtn = document.querySelector(`.mobile-nav-btn[data-page="${page}"]`);
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+        }
+
+        this.currentPage = page;
+
+        // Load data for specific pages
+        if (page === 'library') {
+            console.log('[Navigation] Calling loadLibrary()...');
+            this.loadLibrary();
+        } else if (page === 'global') {
+            console.log('[Navigation] Calling loadGlobalLibrary()...');
+            this.loadGlobalLibrary();
+        }
+    }
+
+    switchMixerTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.mobile-mixer-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mobile-mixer-content').forEach(c => c.classList.remove('active'));
+
+        // Show target tab
+        const targetTab = document.querySelector(`.mobile-mixer-tab[data-mixer-tab="${tabName}"]`);
+        const targetContent = document.getElementById(`mobileMixer${this.capitalizeFirst(tabName)}`);
+
+        if (targetTab) targetTab.classList.add('active');
+        if (targetContent) targetContent.classList.add('active');
+
+        this.currentMixerTab = tabName;
+    }
+
+    /* ==================== SEARCH ==================== */
+
+    setupSearch() {
+        const searchBtn = document.getElementById('mobileSearchBtn');
+        const searchInput = document.getElementById('mobileSearchInput');
+
+        searchBtn.addEventListener('click', () => this.performSearch());
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.performSearch();
+        });
+    }
+
+    async performSearch() {
+        const query = document.getElementById('mobileSearchInput').value.trim();
+        if (!query) return;
+
+        this.showLoading('Searching...');
+
+        try {
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&count=10`);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            this.displaySearchResults(data.results || []);
+        } catch (error) {
+            console.error('[Search] Error:', error);
+            alert('Search failed. Please try again.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    displaySearchResults(results) {
+        const container = document.getElementById('mobileSearchResults');
+        container.innerHTML = '';
+
+        if (results.length === 0) {
+            container.innerHTML = '<p class="mobile-text-center mobile-text-muted">No results found</p>';
+            return;
+        }
+
+        results.forEach(result => {
+            const item = document.createElement('div');
+            item.className = 'mobile-search-result';
+            item.innerHTML = `
+                <img src="${result.thumbnail}" alt="${result.title}" class="mobile-result-thumbnail" loading="lazy">
+                <div class="mobile-result-info">
+                    <div class="mobile-result-title">${this.escapeHtml(result.title)}</div>
+                    <div class="mobile-result-channel">${this.escapeHtml(result.channel || 'Unknown')}</div>
+                </div>
+                <div class="mobile-result-actions">
+                    <button class="mobile-btn-icon" data-video-id="${result.id}" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            `;
+
+            const downloadBtn = item.querySelector('.mobile-btn-icon');
+            downloadBtn.addEventListener('click', () => this.downloadVideo(result));
+
+            container.appendChild(item);
+        });
+    }
+
+    async downloadVideo(video) {
+        this.showLoading('Downloading...');
+
+        try {
+            const response = await fetch('/api/downloads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    video_id: video.id,
+                    title: video.title,
+                    thumbnail: video.thumbnail,
+                    download_type: 'audio',
+                    quality: 'best'
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            alert('Download started! Check My Library.');
+        } catch (error) {
+            console.error('[Download] Error:', error);
+            alert('Download failed. Please try again.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    /* ==================== LIBRARY ==================== */
+
+    async loadLibrary() {
+        try {
+            console.log('[Library] Fetching /api/downloads...');
+            const response = await fetch('/api/downloads');
+            console.log('[Library] Response status:', response.status);
+            const data = await response.json();
+            console.log('[Library] Data received:', data);
+
+            // API returns array directly, not {downloads: [...]}
+            const items = Array.isArray(data) ? data : [];
+            console.log('[Library] Items to display:', items.length);
+
+            this.displayLibrary(items, 'mobileLibraryList');
+        } catch (error) {
+            console.error('[Library] Error:', error);
+        }
+    }
+
+    async loadGlobalLibrary() {
+        try {
+            console.log('[GlobalLibrary] Fetching /api/library...');
+            const response = await fetch('/api/library');
+            console.log('[GlobalLibrary] Response status:', response.status);
+            const data = await response.json();
+            console.log('[GlobalLibrary] Data received:', data);
+
+            // API returns {items: [...], total_count: N}
+            const items = data.items || [];
+            console.log('[GlobalLibrary] Items to display:', items.length);
+
+            this.displayLibrary(items, 'mobileGlobalList', true);
+        } catch (error) {
+            console.error('[GlobalLibrary] Error:', error);
+        }
+    }
+
+    displayLibrary(items, containerId, isGlobal = false) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+
+        if (items.length === 0) {
+            container.innerHTML = '<p class="mobile-text-center mobile-text-muted">No items yet</p>';
+            return;
+        }
+// Debug: Log first item structure        if (items.length > 0) {            console.log('[Library] Sample item:', items[0]);        }
+
+        items.forEach(item => {
+            const libItem = document.createElement('div');
+            libItem.className = 'mobile-library-item';
+
+            const hasStems = item.extracted || item.has_extraction || item.user_has_extraction_access;
+            const statusHtml = hasStems
+                ? '<div class="mobile-library-extracted"><i class="fas fa-check-circle"></i> Stems Available</div>'
+                : '<button class="mobile-btn mobile-btn-small extract-btn">Extract Stems</button>';
+
+            libItem.innerHTML = `
+                <img src="${item.thumbnail_url || '/static/img/default-thumb.jpg'}" alt="${item.title}" class="mobile-library-thumbnail" loading="lazy">
+                <div class="mobile-library-info">
+                    <div class="mobile-library-title">${this.escapeHtml(item.title)}</div>
+                    <div class="mobile-library-status">${item.quality || 'Audio'}</div>
+                    ${statusHtml}
+                </div>
+            `;
+
+            if (hasStems) {
+                libItem.addEventListener('click', () => this.openMixer(item));
+            } else {
+                const extractBtn = libItem.querySelector('.extract-btn');
+                if (extractBtn) {
+                    extractBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.extractStems(item);
+                    });
+                }
+            }
+
+            container.appendChild(libItem);
+        });
+    }
+
+    async extractStems(item) {
+        this.showLoading('Extracting stems...');
+
+        try {
+            const response = await fetch('/api/extractions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    video_id: item.video_id,
+                    audio_path: item.file_path,
+                    model: 'htdemucs',
+                    stems: ['vocals', 'drums', 'bass', 'other']
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            alert('Stem extraction started! This may take a few minutes.');
+        } catch (error) {
+            console.error('[Extraction] Error:', error);
+            alert('Extraction failed. Please try again.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    /* ==================== MIXER ==================== */
+
+    setupMixer() {
+        // Playback controls
+        const playBtn = document.getElementById('mobilePlayBtn');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => this.togglePlayback());
+        }
+
+        // Progress bar
+        const progressBar = document.getElementById('mobileProgressBar');
+        if (progressBar) {
+            progressBar.addEventListener('touchstart', (e) => this.handleProgressTouch(e));
+            progressBar.addEventListener('touchmove', (e) => this.handleProgressTouch(e));
+        }
+
+        // Pitch/Tempo controls
+        this.setupPitchTempoControls();
+// Lyrics generation button        const generateLyricsBtn = document.getElementById('mobileGenerateLyrics');        if (generateLyricsBtn) {            generateLyricsBtn.addEventListener('click', () => this.generateLyrics());        }
+    }
+
+    async openMixer(item) {
+        this.showLoading('Loading mixer...');
+
+        try {
+            // Fetch extraction details
+            const response = await fetch(`/api/extractions/${item.id || item.video_id}`);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            this.currentExtractionId = item.id || item.video_id;
+            this.loadMixerData(data);
+
+            // Show mixer nav button
+            document.getElementById('mobileNavMixer').style.display = 'flex';
+
+            // Navigate to mixer
+            this.navigateTo('mixer');
+        } catch (error) {
+            console.error('[Mixer] Error:', error);
+            alert('Failed to open mixer. Please try again.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async loadMixerData(data) {
+        // Set title
+        // Save BPM for chord timeline
+        this.detected_bpm = data.detected_bpm || 120;
+        document.getElementById('mobileMixerTitle').textContent = data.title || 'Unknown Track';
+
+        // Load stems with iOS fix
+        await this.loadStemsForIOS(data);
+
+        // Load chords if available
+        if (data.chords_data) {
+            try {
+                this.chords = typeof data.chords_data === 'string'
+                    ? JSON.parse(data.chords_data)
+                    : data.chords_data;
+                this.displayChords();
+            } catch (e) {
+                console.error('[Chords] Parse error:', e);
+            }
+        }
+
+        // Load lyrics if available
+        if (data.lyrics_data) {
+            try {
+                this.lyrics = typeof data.lyrics_data === 'string'
+                    ? JSON.parse(data.lyrics_data)
+                    : data.lyrics_data;
+                this.displayLyrics();
+            } catch (e) {
+                console.error('[Lyrics] Parse error:', e);
+            }
+        }
+    }
+
+    /**
+     * iOS Audio Sync Fix: Load stems and prepare for mixing
+     * CRITICAL: iOS can't sync multiple <audio> elements
+     * Solution: We'll need server to pre-mix stems into single file
+     * OR use Web Audio API with single source
+    */
+    async loadStemsForIOS(data) {
+        console.log('[Mixer] Loading 4 separate stems with HTML5 Audio (iOS/Android compatible)');
+
+        const stemNames = ['vocals', 'drums', 'bass', 'other'];
+        const tracksContainer = document.getElementById('mobileTracksContainer');
+        if (!tracksContainer) {
+            console.warn('[Mixer] Missing tracks container');
+            return;
+        }
+
+        // Parse stems_paths
+        let stemsPaths = null;
+        if (data.stems_paths) {
+            try {
+                stemsPaths = typeof data.stems_paths === 'string'
+                    ? JSON.parse(data.stems_paths)
+                    : data.stems_paths;
+                console.log('[Mixer] Parsed stems_paths:', stemsPaths);
+            } catch (e) {
+                console.error('[Mixer] Failed to parse stems_paths:', e);
+                throw new Error('No stems available');
+            }
+        }
+
+        if (!stemsPaths) {
+            throw new Error('No stems paths found');
+        }
+
+        // Clean up previous audio elements
+        this.stopPlayback();
+        Object.values(this.audioElements).forEach(stem => {
+            if (stem.audio) {
+                stem.audio.pause();
+                stem.audio.src = '';
+            }
+        });
+
+        this.audioElements = {};
+        tracksContainer.innerHTML = '';
+
+        // Load all 4 stems in parallel using HTML5 Audio
+        const loadPromises = stemNames.map(async (stemName) => {
+            const stemPath = stemsPaths[stemName];
+            if (!stemPath) {
+                console.warn(`[Mixer] No path for ${stemName}`);
+                return;
+            }
+
+            try {
+                console.log(`[Mixer] Loading ${stemName} from ${stemPath}`);
+
+                // Build URL
+                const url = this.buildMediaUrl(stemPath);
+
+                // Check if file exists
+                const response = await fetch(url, { method: 'HEAD' });
+                if (!response.ok) {
+                    console.error(`[Mixer] Stem ${stemName} not found (${response.status})`);
+                    return;
+                }
+
+                // Create HTML5 Audio element
+                const audio = new Audio();
+                audio.crossOrigin = 'anonymous';
+                audio.preload = 'auto';
+
+                // Promise to wait for metadata loaded
+                const loadPromise = new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Loading timeout'));
+                    }, 15000); // 15 seconds timeout
+
+                    audio.addEventListener('loadedmetadata', () => {
+                        clearTimeout(timeout);
+                        console.log(`[Mixer] ✓ ${stemName} loaded: ${audio.duration.toFixed(2)}s`);
+                        resolve();
+                    });
+
+                    audio.addEventListener('error', (e) => {
+                        clearTimeout(timeout);
+                        reject(new Error(`Loading error: ${e.message || 'Unknown'}`));
+                    });
+                });
+
+                // Set source and start loading
+                audio.src = url;
+                audio.load();
+
+                // Wait for metadata
+                await loadPromise;
+
+                // Store audio element with control properties
+                this.audioElements[stemName] = {
+                    audio: audio,
+                    volume: 1.0,
+                    pan: 0,
+                    muted: false,
+                    solo: false
+                };
+
+                // Initialize track in tracks object
+                this.tracks[stemName] = {
+                    volume: 1.0,
+                    muted: false,
+                    solo: false
+                };
+
+                // Create track control UI
+                this.createTrackControl(stemName);
+
+            } catch (error) {
+                console.error(`[Mixer] Failed to load ${stemName}:`, error);
+            }
+        });
+
+        // Wait for all stems to load
+        await Promise.all(loadPromises);
+
+        // Set duration from longest stem
+        const durations = Object.values(this.audioElements)
+            .map(s => s.audio.duration)
+            .filter(d => d && !isNaN(d));
+
+        if (durations.length > 0) {
+            this.duration = Math.max(...durations);
+            this.currentTime = 0;
+            this.updateTimeDisplay();
+            console.log(`[Mixer] All stems loaded, duration: ${this.duration.toFixed(2)}s`);
+        } else {
+            throw new Error('No stems loaded successfully');
+        }
+    }
+
+        createTrackControl(name) {
+        const container = document.getElementById('mobileTracksContainer');
+
+        const track = document.createElement('div');
+        track.className = 'mobile-track';
+        track.innerHTML = `
+            <div class="mobile-track-header">
+                <span class="mobile-track-name">${name}</span>
+                <div class="mobile-track-buttons">
+                    <button class="mobile-track-btn mute-btn" data-track="${name}">MUTE</button>
+                    <button class="mobile-track-btn solo-btn" data-track="${name}">SOLO</button>
+                </div>
+            </div>
+            <div class="mobile-track-controls">
+                <div class="mobile-track-control">
+                    <span class="mobile-track-label">Volume</span>
+                    <input type="range" class="mobile-track-slider volume-slider"
+                           data-track="${name}" min="0" max="100" value="100">
+                    <span class="mobile-track-value">100%</span>
+                </div>
+                <div class="mobile-track-control">
+                    <span class="mobile-track-label">Pan</span>
+                    <input type="range" class="mobile-track-slider pan-slider"
+                           data-track="${name}" min="-100" max="100" value="0">
+                    <span class="mobile-track-value">0</span>
+                </div>
+            </div>
+        `;
+
+        // Setup event listeners
+        const volumeSlider = track.querySelector('.volume-slider');
+        const panSlider = track.querySelector('.pan-slider');
+        const muteBtn = track.querySelector('.mute-btn');
+        const soloBtn = track.querySelector('.solo-btn');
+
+        volumeSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            e.target.nextElementSibling.textContent = `${value}%`;
+            this.setTrackVolume(name, value / 100);
+        });
+
+        panSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            e.target.nextElementSibling.textContent = value;
+            this.setTrackPan(name, value / 100);
+        });
+
+        muteBtn.addEventListener('click', () => {
+            this.toggleMute(name);
+            muteBtn.classList.toggle('active');
+        });
+
+        soloBtn.addEventListener('click', () => {
+            this.toggleSolo(name);
+            soloBtn.classList.toggle('active');
+        });
+
+        container.appendChild(track);
+
+        // Initialize track state
+        if (!this.tracks[name]) {
+            this.tracks[name] = {
+                volume: 1.0,
+                pan: 0,
+                muted: false,
+                solo: false
+            };
+        }
+    }
+
+    toggleMute(name) {
+        if (!this.tracks[name]) return;
+        
+        this.tracks[name].muted = !this.tracks[name].muted;
+        this.applyMixerState();
+    }
+
+    toggleSolo(name) {
+        if (!this.tracks[name]) return;
+        
+        this.tracks[name].solo = !this.tracks[name].solo;
+        this.applyMixerState();
+    }
+
+    applyMixerState() {
+        // Apply mute/solo logic for individual HTML5 audio elements
+        Object.keys(this.tracks).forEach(trackName => {
+            const track = this.tracks[trackName];
+            const stem = this.audioElements[trackName];
+
+            if (!stem) return;
+
+            // Calculate effective volume using helper method
+            const effectiveVolume = this.getEffectiveVolume(trackName);
+
+            // Apply volume to HTML5 audio element
+            stem.audio.volume = effectiveVolume * this.masterVolume;
+            console.log(`[Audio] ${trackName} volume: ${track.volume.toFixed(2)} (effective: ${effectiveVolume.toFixed(2)})`);
+        });
+    }
+
+    /**
+     * Calculate effective volume based on mute/solo state
+     * @param {string} stemName - Name of the stem (vocals, drums, bass, other)
+     * @returns {number} - Effective volume (0-1)
+     */
+    getEffectiveVolume(stemName) {
+        const track = this.tracks[stemName];
+        if (!track) {
+            console.warn(`[Volume] No track found for ${stemName}, returning 1.0`);
+            return 1.0; // DEFAULT TO FULL VOLUME if track doesn't exist
+        }
+
+        // Check if muted
+        if (track.muted) {
+            console.log(`[Volume] ${stemName} is muted`);
+            return 0;
+        }
+
+        // Check solo logic
+        const hasSolo = Object.values(this.tracks).some(t => t.solo);
+        if (hasSolo && !track.solo) {
+            console.log(`[Volume] ${stemName} muted by solo`);
+            return 0;
+        }
+
+        return track.volume;
+    }
+
+    setTrackVolume(name, volume) {
+        if (!this.tracks[name]) return;
+
+        this.tracks[name].volume = volume;
+
+        // Apply via mixer state (handles mute/solo)
+        this.applyMixerState();
+    }
+
+    setTrackPan(name, pan) {
+        if (!this.tracks[name]) return;
+        
+        this.tracks[name].pan = pan;
+        
+        // TODO: Implement panning with StereoPannerNode when needed
+        console.log(`[Audio] Pan set to ${pan} for ${name} (not yet implemented)`);
+    }
+
+    async togglePlayback() {
+        if (this.isPlaying) {
+            this.pausePlayback();
+        } else {
+            await this.playPlayback();
+        }
+    }
+
+    async playPlayback() {
+        if (!this.audioElements || Object.keys(this.audioElements).length === 0) {
+            console.warn('[Audio] No stems loaded');
+            return;
+        }
+
+        try {
+            console.log(`[Audio] Playing from ${this.currentTime.toFixed(2)}s (HTML5 Audio)`);
+            console.log('[Audio] Loaded stems:', Object.keys(this.audioElements));
+
+            // Set currentTime for ALL audio elements BEFORE playing
+            // This ensures they start at the same position
+            Object.values(this.audioElements).forEach(stem => {
+                stem.audio.currentTime = this.currentTime;
+            });
+
+            // Start ALL audio elements in parallel using Promise.all
+            // This is CRITICAL for synchronization on iOS
+            const playPromises = Object.keys(this.audioElements).map(async (stemName) => {
+                const stem = this.audioElements[stemName];
+                const track = this.tracks[stemName];
+
+                // DEBUG: Log track state
+                console.log(`[Audio] ${stemName} track state:`, {
+                    volume: track ? track.volume : 'NO TRACK',
+                    muted: track ? track.muted : 'NO TRACK',
+                    solo: track ? track.solo : 'NO TRACK'
+                });
+
+                // Apply volume based on mute/solo state
+                const effectiveVolume = this.getEffectiveVolume(stemName);
+                stem.audio.volume = effectiveVolume * this.masterVolume;
+
+                console.log(`[Audio] ${stemName} volume set to: ${stem.audio.volume.toFixed(2)} (effective: ${effectiveVolume.toFixed(2)}, master: ${this.masterVolume})`);
+
+                try {
+                    await stem.audio.play();
+                    console.log(`[Audio] ${stemName} playing - readyState: ${stem.audio.readyState}, paused: ${stem.audio.paused}`);
+                } catch (e) {
+                    console.error(`[Audio] Failed to play ${stemName}:`, e);
+                }
+            });
+
+            // Wait for all to start
+            await Promise.all(playPromises);
+
+            this.isPlaying = true;
+
+            // Update UI
+            const playBtn = document.getElementById('mobilePlayBtn');
+            if (playBtn) {
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            }
+
+            // Start time updates and keep stems synchronized
+            this.startTimeUpdate();
+            this.startSyncCheck();
+
+            console.log('[Audio] All stems should now be playing');
+
+        } catch (error) {
+            this.isPlaying = false;
+            console.error('[Audio] Playback failed:', error);
+        }
+    }
+
+    pausePlayback() {
+        if (!this.isPlaying) return;
+
+        // Pause all audio elements
+        Object.values(this.audioElements).forEach(stem => {
+            stem.audio.pause();
+        });
+
+        this.isPlaying = false;
+        this.stopTimeUpdate();
+        this.stopSyncCheck();
+
+        // Update currentTime from first stem (they should all be synchronized)
+        const firstStem = Object.values(this.audioElements)[0];
+        if (firstStem) {
+            this.currentTime = firstStem.audio.currentTime;
+        }
+
+        const playBtn = document.getElementById('mobilePlayBtn');
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+
+        console.log('[Audio] Paused');
+    }
+
+    stopPlayback() {
+        // Pause all audio elements
+        Object.values(this.audioElements).forEach(stem => {
+            stem.audio.pause();
+            stem.audio.currentTime = 0;
+        });
+
+        this.isPlaying = false;
+        this.currentTime = 0;
+
+        const playBtn = document.getElementById('mobilePlayBtn');
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+
+        this.stopTimeUpdate();
+        this.stopSyncCheck();
+        this.updateTimeDisplay();
+        this.updateProgressBar();
+
+        console.log('[Audio] Stopped');
+    }
+
+    startTimeUpdate() {
+        const update = () => {
+            if (this.isPlaying) {
+                // Get current time from first audio element
+                const firstStem = Object.values(this.audioElements)[0];
+                if (firstStem) {
+                    this.currentTime = firstStem.audio.currentTime;
+
+                    if (this.currentTime >= this.duration) {
+                        this.currentTime = this.duration;
+                        this.pausePlayback();
+                        return;
+                    }
+
+                    this.updateTimeDisplay();
+                    this.updateProgressBar();
+                    this.updateActiveLyric();
+                    this.syncChordPlayhead();
+                }
+
+                this.animationFrame = requestAnimationFrame(update);
+            }
+        };
+        update();
+    }
+
+    stopTimeUpdate() {
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+    }
+
+    /**
+     * CRITICAL: Keep stems synchronized during playback
+     * HTML5 Audio elements can drift apart, this corrects them
+     */
+    startSyncCheck() {
+        this.stopSyncCheck(); // Clear any existing interval
+
+        this.syncInterval = setInterval(() => {
+            if (!this.isPlaying) return;
+
+            const stems = Object.values(this.audioElements);
+            if (stems.length === 0) return;
+
+            // Use first stem as reference
+            const refTime = stems[0].audio.currentTime;
+
+            // Check if any stem has drifted more than 50ms
+            stems.forEach((stem, index) => {
+                if (index === 0) return; // Skip reference stem
+
+                const drift = Math.abs(stem.audio.currentTime - refTime);
+
+                if (drift > 0.05) { // 50ms threshold
+                    console.warn(`[Sync] Correcting drift: ${(drift * 1000).toFixed(0)}ms`);
+                    stem.audio.currentTime = refTime;
+                }
+            });
+        }, 200); // Check every 200ms
+    }
+
+    stopSyncCheck() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
+    }
+
+    handleProgressTouch(e) {
+        e.preventDefault();
+
+        if (Object.keys(this.audioElements).length === 0 || this.duration <= 0) {
+            return;
+        }
+
+        const touch = e.touches[0];
+        const progressBar = document.getElementById('mobileProgressBar');
+        const rect = progressBar.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const percent = Math.max(0, Math.min(1, x / rect.width));
+
+        this.currentTime = percent * this.duration;
+
+        // Seek all audio elements to the new time
+        Object.values(this.audioElements).forEach(stem => {
+            stem.audio.currentTime = this.currentTime;
+        });
+
+        this.updateProgressBar();
+        this.updateTimeDisplay();
+    }
+
+    updateProgressBar() {
+        const percent = this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0;
+
+        const fill = document.getElementById('mobileProgressFill');
+        const handle = document.getElementById('mobileProgressHandle');
+
+        if (fill) fill.style.width = `${percent}%`;
+        if (handle) handle.style.left = `${percent}%`;
+    }
+
+    updateTimeDisplay() {
+        const currentEl = document.getElementById('mobileCurrentTime');
+        const durationEl = document.getElementById('mobileDuration');
+
+        if (currentEl) currentEl.textContent = this.formatTime(this.currentTime);
+        if (durationEl) durationEl.textContent = this.formatTime(this.duration);
+    }
+
+    /* ==================== PITCH/TEMPO ==================== */
+
+    setupPitchTempoControls() {
+        // Pitch controls
+        const pitchSlider = document.getElementById('mobilePitchSlider');
+        const pitchValue = document.getElementById('mobilePitchValue');
+        const pitchUp = document.getElementById('mobilePitchUp');
+        const pitchDown = document.getElementById('mobilePitchDown');
+
+        if (pitchSlider) {
+            pitchSlider.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                pitchValue.textContent = value;
+                this.applyPitchShift(value);
+            });
+        }
+
+        if (pitchUp) {
+            pitchUp.addEventListener('click', () => {
+                pitchSlider.value = Math.min(6, parseInt(pitchSlider.value) + 1);
+                pitchSlider.dispatchEvent(new Event('input'));
+            });
+        }
+
+        if (pitchDown) {
+            pitchDown.addEventListener('click', () => {
+                pitchSlider.value = Math.max(-6, parseInt(pitchSlider.value) - 1);
+                pitchSlider.dispatchEvent(new Event('input'));
+            });
+        }
+
+        // Tempo controls
+        const tempoSlider = document.getElementById('mobileTempoSlider');
+        const tempoValue = document.getElementById('mobileTempoValue');
+        const tempoUp = document.getElementById('mobileTempoUp');
+        const tempoDown = document.getElementById('mobileTempoDown');
+
+        if (tempoSlider) {
+            tempoSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                tempoValue.textContent = `${value.toFixed(2)}x`;
+                this.applyTempoChange(value);
+            });
+        }
+
+        if (tempoUp) {
+            tempoUp.addEventListener('click', () => {
+                tempoSlider.value = Math.min(2.0, parseFloat(tempoSlider.value) + 0.05);
+                tempoSlider.dispatchEvent(new Event('input'));
+            });
+        }
+
+        if (tempoDown) {
+            tempoDown.addEventListener('click', () => {
+                tempoSlider.value = Math.max(0.5, parseFloat(tempoSlider.value) - 0.05);
+                tempoSlider.dispatchEvent(new Event('input'));
+            });
+        }
+    }
+
+    /* ==================== CHORDS ==================== */
+
+    displayChords() {
+        const container = document.getElementById('mobileChordTimeline');
+        if (!container || !this.chords.length) {
+            if (container) {
+                container.innerHTML = '<p class="mobile-chords-placeholder">No chords available</p>';
+            }
+            return;
+        }
+
+        container.innerHTML = '';
+        container.className = 'mobile-chord-timeline-grid';
+
+        // Get total duration
+        const duration = this.duration || this.chords[this.chords.length - 1].timestamp + 10;
+        const bpm = this.detected_bpm || 120;
+        const secondsPerBeat = 60 / bpm;
+        const beatsPerBar = 4;
+        const secondsPerBar = secondsPerBeat * beatsPerBar;
+
+        // Create timeline container
+        const timeline = document.createElement('div');
+        timeline.className = 'mobile-timeline-scroll';
+        timeline.style.width = `${duration * 30}px`;
+        timeline.style.position = 'relative';
+        timeline.style.height = '120px';
+
+        // Draw measure bars
+        for (let time = 0; time < duration; time += secondsPerBar) {
+            const measureBar = document.createElement('div');
+            measureBar.className = 'mobile-measure-bar';
+            measureBar.style.cssText = `
+                position: absolute;
+                left: ${time * 30}px;
+                top: 0;
+                bottom: 0;
+                width: 1px;
+                background: rgba(255,255,255,0.1);
+            `;
+
+            const barNumber = Math.floor(time / secondsPerBar) + 1;
+            const label = document.createElement('span');
+            label.textContent = barNumber;
+            label.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 3px;
+                font-size: 10px;
+                color: rgba(255,255,255,0.4);
+            `;
+            measureBar.appendChild(label);
+            timeline.appendChild(measureBar);
+        }
+
+        // Display chords on timeline
+        this.chords.forEach((chord, index) => {
+            const chordBox = document.createElement('div');
+            chordBox.className = 'mobile-chord-box';
+            chordBox.setAttribute('data-index', index);
+
+            const leftPos = (chord.timestamp || 0) * 30;
+            const nextTimestamp = this.chords[index + 1]?.timestamp || duration;
+            const width = Math.max((nextTimestamp - chord.timestamp) * 30, 40);
+
+            chordBox.style.cssText = `
+                position: absolute;
+                left: ${leftPos}px;
+                top: 30px;
+                width: ${width}px;
+                height: 60px;
+                background: rgba(29, 185, 84, 0.2);
+                border: 1px solid rgba(29, 185, 84, 0.5);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 14px;
+                color: #1DB954;
+                cursor: pointer;
+            `;
+
+            chordBox.textContent = chord.chord || 'N/A';
+
+            chordBox.addEventListener('click', () => {
+                if (this.audioElement) {
+                    this.audioElement.currentTime = chord.timestamp || 0;
+                    this.currentTime = chord.timestamp || 0;
+                    this.updateProgressBar();
+                    this.updateTimeDisplay();
+                }
+            });
+
+            timeline.appendChild(chordBox);
+        });
+
+        // Playhead indicator
+        this.playheadIndicator = document.createElement('div');
+        this.playheadIndicator.className = 'mobile-playhead';
+        this.playheadIndicator.style.cssText = `
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ff4444;
+            z-index: 10;
+            pointer-events: none;
+        `;
+        timeline.appendChild(this.playheadIndicator);
+
+        container.appendChild(timeline);
+
+        console.log(`[Chords] Timeline built with ${this.chords.length} chords, duration: ${duration}s`);
+    }
+
+    syncChordPlayhead() {
+        if (!this.playheadIndicator) return;
+
+        const leftPos = this.currentTime * 30;
+        this.playheadIndicator.style.left = `${leftPos}px`;
+
+        // Auto-scroll to keep playhead centered
+        const container = document.getElementById('mobileChordTimeline');
+        if (container && container.scrollLeft !== undefined) {
+            const scrollTarget = leftPos - (container.clientWidth / 2);
+            container.scrollLeft = Math.max(0, scrollTarget);
+        }
+    }
+
+    /* ==================== LYRICS ==================== */
+
+    async generateLyrics() {
+        if (!this.currentExtractionId) {
+            alert('No track loaded');
+            return;
+        }
+
+        const btn = document.getElementById('mobileGenerateLyrics');
+        if (!btn) return;
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`/api/extractions/${this.currentExtractionId}/lyrics/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Reload lyrics
+            if (data.lyrics_data) {
+                this.lyrics = typeof data.lyrics_data === 'string'
+                    ? JSON.parse(data.lyrics_data)
+                    : data.lyrics_data;
+                this.displayLyrics();
+                alert('Lyrics generated successfully!');
+            }
+        } catch (error) {
+            console.error('[Lyrics] Generation error:', error);
+            alert(`Failed to generate lyrics: ${error.message}`);
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    displayLyrics() {
+        const container = document.getElementById('mobileLyricsDisplay');
+        if (!container) return;
+
+        if (!this.lyrics.length) {
+            container.innerHTML = '<p class="mobile-lyrics-placeholder">No lyrics available</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+
+        this.lyrics.forEach((segment, index) => {
+            const line = document.createElement('div');
+            line.className = 'mobile-lyrics-line';
+            line.dataset.index = index;
+            line.dataset.start = segment.start || 0;
+            line.dataset.end = segment.end || 0;
+            line.textContent = segment.text || '';
+            container.appendChild(line);
+        });
+    }
+
+    updateActiveLyric() {
+        if (!this.lyrics.length) return;
+
+        const lines = document.querySelectorAll('.mobile-lyrics-line');
+        lines.forEach(line => {
+            const start = parseFloat(line.dataset.start);
+            const end = parseFloat(line.dataset.end);
+
+            if (this.currentTime >= start && this.currentTime <= end) {
+                line.classList.add('active');
+                // Auto-scroll to active line
+                line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                line.classList.remove('active');
+            }
+        });
+    }
+
+    /* ==================== UTILITIES ==================== */
+
+    buildMediaUrl(filePath) {
+        if (!filePath) return null;
+
+        const trimmed = String(filePath).trim();
+        if (!trimmed) return null;
+
+        // Preserve fully qualified URLs and existing API endpoints
+        if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('/api/')) {
+            return trimmed;
+        }
+
+        // If already an absolute path under app root, defer to streaming endpoint
+        return `/api/stream-audio?file_path=${encodeURIComponent(trimmed)}`;
+    }
+
+    async setAudioSource(url) {
+        if (!this.audioElement) {
+            throw new Error('Mobile audio element not found');
+        }
+
+        return new Promise((resolve, reject) => {
+            const audio = this.audioElement;
+
+            const cleanup = () => {
+                audio.removeEventListener('loadedmetadata', onLoaded);
+                audio.removeEventListener('error', onError);
+            };
+
+            const onLoaded = async () => {
+                cleanup();
+                this.currentAudioUrl = url;
+                this.duration = audio.duration || 0;
+                this.currentTime = audio.currentTime || 0;
+                this.updateTimeDisplay();
+                
+                // Connect audio to Web Audio API for iOS compatibility
+                await this.connectAudioToContext();
+                
+                resolve();
+            };
+
+            const onError = (event) => {
+                cleanup();
+                const mediaError = event?.target?.error || event?.currentTarget?.error;
+                if (mediaError && mediaError.message) {
+                    reject(new Error(mediaError.message));
+                } else {
+                    reject(new Error('Failed to load audio source'));
+                }
+            };
+
+            audio.addEventListener('loadedmetadata', onLoaded, { once: true });
+            audio.addEventListener('error', onError, { once: true });
+
+            audio.src = url;
+            audio.load();
+        });
+    }
+
+    async connectAudioToContext() {
+        if (!this.audioContext || this.sourceNode) return;
+
+        try {
+            // Resume context if suspended (iOS requirement)
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+                console.log('[Audio] AudioContext resumed');
+            }
+
+            // Create source from audio element
+            this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement);
+
+// Create gain node for volume control            this.mainGainNode = this.audioContext.createGain();            this.mainGainNode.gain.value = 1.0;
+            // Try to load SoundTouch worklet for pitch/tempo control
+            await this.loadSoundTouchWorklet();
+
+            if (this.soundTouchNode) {
+                // Chain: source -> soundtouch -> gain -> master -> destination
+                this.sourceNode.connect(this.soundTouchNode);
+                this.soundTouchNode.connect(this.mainGainNode);
+            } else {
+                // Fallback: source -> gain -> master -> destination
+                this.sourceNode.connect(this.mainGainNode);
+            }
+
+            this.mainGainNode.connect(this.masterGainNode);
+
+            console.log('[Audio] Connected to Web Audio API with', this.soundTouchNode ? 'SoundTouch' : 'basic playback');
+        } catch (error) {
+            console.error('[Audio] Failed to connect to AudioContext:', error);
+        }
+    }
+
+    async loadSoundTouchWorklet() {
+        try {
+            if (!this.audioContext.audioWorklet) {
+                console.warn('[Audio] AudioWorklet not supported, using playbackRate fallback');
+                this.useFallbackPitchTempo = true;
+                return;
+            }
+
+            await this.audioContext.audioWorklet.addModule('/static/wasm/soundtouch-worklet.js');
+            this.soundTouchNode = new AudioWorkletNode(this.audioContext, 'soundtouch-worklet');
+
+            // Set default values
+            this.soundTouchNode.parameters.get('pitch').value = 1.0;
+            this.soundTouchNode.parameters.get('tempo').value = 1.0;
+
+            console.log('[Audio] SoundTouch worklet loaded successfully');
+        } catch (error) {
+            console.warn('[Audio] Failed to load SoundTouch, using fallback:', error);
+            this.useFallbackPitchTempo = true;
+        }
+    }
+
+    applyPitchShift(semitones) {
+        const pitchRatio = Math.pow(2, semitones / 12);
+
+        if (this.soundTouchNode) {
+            this.soundTouchNode.parameters.get('pitch').value = pitchRatio;
+            console.log(`[Audio] Pitch shift: ${semitones} semitones (ratio: ${pitchRatio.toFixed(3)})`);
+        } else if (this.useFallbackPitchTempo && this.audioElement) {
+            // Fallback: use playbackRate (changes both pitch and tempo)
+            this.audioElement.playbackRate = pitchRatio * (this.currentTempo || 1.0);
+            console.log(`[Audio] Fallback pitch via playbackRate: ${this.audioElement.playbackRate.toFixed(3)}`);
+        }
+
+        this.currentPitchSemitones = semitones;
+    }
+
+    applyTempoChange(tempoRatio) {
+        if (this.soundTouchNode) {
+            this.soundTouchNode.parameters.get('tempo').value = tempoRatio;
+            console.log(`[Audio] Tempo: ${tempoRatio.toFixed(2)}x`);
+        } else if (this.useFallbackPitchTempo && this.audioElement) {
+            // Fallback: use playbackRate
+            const pitchRatio = Math.pow(2, (this.currentPitchSemitones || 0) / 12);
+            this.audioElement.playbackRate = pitchRatio * tempoRatio;
+            console.log(`[Audio] Fallback tempo via playbackRate: ${this.audioElement.playbackRate.toFixed(3)}`);
+        }
+
+        this.currentTempo = tempoRatio;
+    }
+
+    showLoading(text = 'Loading...') {
+        const overlay = document.getElementById('mobileLoadingOverlay');
+        const textEl = document.getElementById('mobileLoadingText');
+        if (overlay) {
+            overlay.classList.add('show');
+            if (textEl) textEl.textContent = text;
+        }
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('mobileLoadingOverlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+        }
+    }
+
+    formatTime(seconds) {
+        if (isNaN(seconds) || seconds < 0) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    capitalizeFirst(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.mobileApp = new MobileApp();
+});

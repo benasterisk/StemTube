@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>StemTube Mobile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-style.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="mobile-body">
+    <!-- Top Navigation Bar -->
+    <header class="mobile-header">
+        <div class="mobile-header-content">
+            <h1 class="mobile-logo">🎵 StemTube</h1>
+            <div class="mobile-header-actions">
+                <span class="mobile-username">{{ current_username }}</span>
+                <button id="mobileSettingsBtn" class="mobile-icon-btn">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="mobile-main" id="mobileMainContent">
+        <!-- Search Page -->
+        <div class="mobile-page" id="mobileSearchPage">
+            <div class="mobile-search-container">
+                <div class="mobile-search-box">
+                    <input type="text" id="mobileSearchInput" placeholder="Search YouTube..." class="mobile-input">
+                    <button id="mobileSearchBtn" class="mobile-btn mobile-btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="mobile-search-results" id="mobileSearchResults">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Library Page (with My/Global sub-tabs) -->
+        <div class="mobile-page active" id="mobileLibraryPage">
+            <div class="mobile-section-header">
+                <h2>Libraries</h2>
+                <button id="mobileRefreshLibrary" class="mobile-icon-btn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <!-- Library Sub-tabs -->
+            <div class="mobile-library-tabs">
+                <button class="mobile-library-tab active" data-library-tab="my">
+                    <i class="fas fa-folder"></i>
+                    <span>My Library</span>
+                </button>
+                <button class="mobile-library-tab" data-library-tab="global">
+                    <i class="fas fa-globe"></i>
+                    <span>Global Library</span>
+                </button>
+            </div>
+
+            <!-- My Library Content -->
+            <div class="mobile-library-content active" id="mobileMyLibraryContent">
+                <div class="mobile-library-list" id="mobileLibraryList">
+                    <!-- My library items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Global Library Content -->
+            <div class="mobile-library-content" id="mobileGlobalLibraryContent">
+                <div class="mobile-library-list" id="mobileGlobalList">
+                    <!-- Global library items will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Mixer Page (loaded when opening a track) -->
+        <div class="mobile-page" id="mobileMixerPage">
+            <div class="mobile-mixer-header">
+                <button id="mobileMixerBack" class="mobile-icon-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 id="mobileMixerTitle" class="mobile-mixer-title">Loading...</h2>
+            </div>
+
+            <!-- Mixer Sub-Navigation -->
+            <div class="mobile-mixer-tabs">
+                <button class="mobile-mixer-tab active" data-mixer-tab="controls">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Mix</span>
+                </button>
+                <button class="mobile-mixer-tab" data-mixer-tab="chords">
+                    <i class="fas fa-music"></i>
+                    <span>Chords</span>
+                </button>
+                <button class="mobile-mixer-tab" data-mixer-tab="lyrics">
+                    <i class="fas fa-microphone"></i>
+                    <span>Lyrics</span>
+                </button>
+            </div>
+
+            <!-- Mixer Controls Tab -->
+            <div class="mobile-mixer-content active" id="mobileMixerControls">
+                <!-- Unified Control Bar (Play/Pause/Stop + Tempo/Pitch) -->
+                <div class="mobile-unified-controls">
+                    <div class="mobile-playback-row">
+                        <button id="mobilePlayBtn" class="mobile-control-btn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button id="mobileStopBtn" class="mobile-control-btn">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <div class="mobile-time-display">
+                            <span id="mobileCurrentTime">0:00</span> / <span id="mobileDuration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="mobile-control-sliders-row">
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Tempo</span>
+                                <span id="mobileTempoValueMain" class="mobile-value">1.0x</span>
+                            </div>
+                            <input type="range" id="mobileTempoSliderMain" min="0.5" max="2.0" value="1.0" step="0.05" class="mobile-slider">
+                        </div>
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Pitch</span>
+                                <span id="mobilePitchValueMain" class="mobile-value">0</span>
+                            </div>
+                            <input type="range" id="mobilePitchSliderMain" min="-12" max="12" value="0" step="1" class="mobile-slider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Single Global Waveform -->
+                <div class="mobile-waveform-container">
+                    <div class="mobile-waveform-timeline" id="mobileWaveformTimeline">
+                        <!-- Timeline markers will be generated here -->
+                    </div>
+                    <canvas id="mobileWaveformCanvas" class="mobile-waveform"></canvas>
+
+                    <!-- Playhead vertical (position indicator) -->
+                    <div class="mobile-playhead" id="mobilePlayhead">
+                        <div class="mobile-playhead-line"></div>
+                        <div class="mobile-playhead-handle"></div>
+                    </div>
+
+                    <!-- Seek bar at bottom -->
+                    <div class="mobile-seek-bar" id="mobileSeekBar">
+                        <div class="mobile-seek-progress" id="mobileSeekProgress"></div>
+                        <div class="mobile-seek-handle" id="mobileSeekHandle"></div>
+                    </div>
+                </div>
+
+                <!-- Stem Controls (Solo/Mute/Volume/Pan per stem) -->
+                <div class="mobile-tracks-container" id="mobileTracksContainer">
+                    <!-- Track controls will be populated here -->
+                </div>
+            </div>
+
+            <!-- Chords Tab -->
+            <div class="mobile-mixer-content" id="mobileMixerChords">
+                <!-- Unified Control Bar (same as Mix tab) -->
+                <div class="mobile-unified-controls">
+                    <div class="mobile-playback-row">
+                        <button id="mobilePlayBtnChords" class="mobile-control-btn mobile-play-sync">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button id="mobileStopBtnChords" class="mobile-control-btn mobile-stop-sync">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <div class="mobile-time-display">
+                            <span id="mobileCurrentTimeChords" class="mobile-time-sync">0:00</span> / <span id="mobileDurationChords" class="mobile-duration-sync">0:00</span>
+                        </div>
+                    </div>
+                    <div class="mobile-control-sliders-row">
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Tempo</span>
+                                <span id="mobileTempoValueChords" class="mobile-value mobile-tempo-value-sync">1.0x</span>
+                            </div>
+                            <input type="range" id="mobileTempoSliderChords" min="0.5" max="2.0" value="1.0" step="0.05" class="mobile-slider mobile-tempo-sync">
+                        </div>
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Pitch</span>
+                                <span id="mobilePitchValueChords" class="mobile-value mobile-pitch-value-sync">0</span>
+                            </div>
+                            <input type="range" id="mobilePitchSliderChords" min="-12" max="12" value="0" step="1" class="mobile-slider mobile-pitch-sync">
+                        </div>
+                    </div>
+                    <div class="mobile-chord-action-row">
+                        <button id="mobileRegenerateChords" class="mobile-btn mobile-btn-ghost">
+                            <i class="fas fa-sync-alt"></i> Regenerate Chords
+                        </button>
+                        <button id="mobileChordGridViewBtn" class="mobile-btn mobile-btn-ghost">
+                            <i class="fas fa-th"></i> Grid View
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chord Timeline -->
+                <div class="mobile-chord-timeline" id="mobileChordTimeline">
+                    <!-- Chord timeline will be rendered here -->
+                </div>
+
+                <div class="mobile-chord-diagram-panel">
+                    <div class="mobile-chord-diagram-header">
+                        <span>Accords</span>
+                        <div class="mobile-chord-instrument-toggle">
+                            <button type="button" class="active" data-chord-instrument="guitar">Guitar</button>
+                            <button type="button" data-chord-instrument="piano">Piano</button>
+                        </div>
+                    </div>
+                    <div class="mobile-chord-diagram-carousel">
+                        <div class="mobile-chord-diagram mobile-chord-diagram-prev" id="mobileChordDiagramPrev">
+                            <p class="mobile-text-muted">—</p>
+                        </div>
+                        <div class="mobile-chord-diagram mobile-chord-diagram-current" id="mobileChordDiagram">
+                            <p class="mobile-text-muted">Select a chord to view the diagram.</p>
+                        </div>
+                        <div class="mobile-chord-diagram mobile-chord-diagram-next" id="mobileChordDiagramNext">
+                            <p class="mobile-text-muted">—</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lyrics Tab -->
+            <div class="mobile-mixer-content" id="mobileMixerLyrics">
+                <!-- Unified Control Bar (same as Mix tab) -->
+                <div class="mobile-unified-controls">
+                    <div class="mobile-playback-row">
+                        <button id="mobilePlayBtnLyrics" class="mobile-control-btn mobile-play-sync">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button id="mobileStopBtnLyrics" class="mobile-control-btn mobile-stop-sync">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <div class="mobile-time-display">
+                            <span id="mobileCurrentTimeLyrics" class="mobile-time-sync">0:00</span> / <span id="mobileDurationLyrics" class="mobile-duration-sync">0:00</span>
+                        </div>
+                    </div>
+                    <div class="mobile-control-sliders-row">
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Tempo</span>
+                                <span id="mobileTempoValueLyrics" class="mobile-value mobile-tempo-value-sync">1.0x</span>
+                            </div>
+                            <input type="range" id="mobileTempoSliderLyrics" min="0.5" max="2.0" value="1.0" step="0.05" class="mobile-slider mobile-tempo-sync">
+                        </div>
+                        <div class="mobile-slider-group">
+                            <div class="mobile-slider-label">
+                                <span>Pitch</span>
+                                <span id="mobilePitchValueLyrics" class="mobile-value mobile-pitch-value-sync">0</span>
+                            </div>
+                            <input type="range" id="mobilePitchSliderLyrics" min="-12" max="12" value="0" step="1" class="mobile-slider mobile-pitch-sync">
+                        </div>
+                    </div>
+                    <div class="mobile-lyrics-action-row">
+                        <button id="mobileGenerateLyrics" class="mobile-btn mobile-btn-ghost">
+                            <i class="fas fa-magic"></i>
+                            <span>Generate Lyrics</span>
+                        </button>
+                        <button id="mobileFocusLyrics" class="mobile-btn mobile-btn-primary">
+                            <i class="fas fa-expand"></i>
+                            <span>Focus Lyrics</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mobile-lyrics-display" id="mobileLyricsDisplay">
+                    <p class="mobile-lyrics-placeholder">No lyrics available. Generate lyrics to see them here.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Chords Grid Popup -->
+    <div class="chords-grid-popup-overlay" id="chords-grid-popup" aria-hidden="true">
+        <div class="chords-grid-popup-dialog">
+            <div class="chords-grid-popup-header">
+                <h3>Chords Grid View</h3>
+                <button class="chords-grid-popup-close" id="chords-grid-popup-close">
+                    <i class="fas fa-times"></i>
+                    <span>Close</span>
+                </button>
+            </div>
+            <!-- Control bar for Grid View -->
+            <div class="popup-controls-bar">
+                <div class="popup-playback-controls">
+                    <button id="gridPlayBtn" class="popup-control-btn popup-play-sync">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="gridStopBtn" class="popup-control-btn popup-stop-sync">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <div class="popup-time-display">
+                        <span id="gridCurrentTime" class="popup-time-sync">0:00</span> / <span id="gridDuration" class="popup-duration-sync">0:00</span>
+                    </div>
+                </div>
+                <div class="popup-sliders">
+                    <div class="popup-slider-group">
+                        <span class="popup-slider-label">Tempo</span>
+                        <input type="range" id="gridTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="popup-slider popup-tempo-sync">
+                        <span id="gridTempoValue" class="popup-slider-value popup-tempo-value-sync">1.0x</span>
+                    </div>
+                    <div class="popup-slider-group">
+                        <span class="popup-slider-label">Pitch</span>
+                        <input type="range" id="gridPitchSlider" min="-12" max="12" value="0" step="1" class="popup-slider popup-pitch-sync">
+                        <span id="gridPitchValue" class="popup-slider-value popup-pitch-value-sync">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chords-grid-popup-body">
+                <div class="chords-grid-container" id="chords-grid-container">
+                    <!-- Chords grid will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Lyrics Focus Popup -->
+    <div class="lyrics-popup-overlay" id="mobile-lyrics-popup" aria-hidden="true">
+        <div class="lyrics-popup-dialog">
+            <div class="lyrics-popup-header">
+                <h3>Lyrics Focus</h3>
+                <button class="lyrics-popup-close" id="mobile-lyrics-popup-close">
+                    <i class="fas fa-times"></i>
+                    <span>Close</span>
+                </button>
+            </div>
+            <!-- Control bar for Lyrics Focus -->
+            <div class="popup-controls-bar">
+                <div class="popup-playback-controls">
+                    <button id="mobileLyricsPopupPlayBtn" class="popup-control-btn popup-play-sync">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="mobileLyricsPopupStopBtn" class="popup-control-btn popup-stop-sync">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <div class="popup-time-display">
+                        <span id="mobileLyricsPopupCurrentTime" class="popup-time-sync">0:00</span> / <span id="mobileLyricsPopupDuration" class="popup-duration-sync">0:00</span>
+                    </div>
+                </div>
+                <div class="popup-sliders">
+                    <div class="popup-slider-group">
+                        <span class="popup-slider-label">Tempo</span>
+                        <input type="range" id="mobileLyricsPopupTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="popup-slider popup-tempo-sync">
+                        <span id="mobileLyricsPopupTempoValue" class="popup-slider-value popup-tempo-value-sync">1.0x</span>
+                    </div>
+                    <div class="popup-slider-group">
+                        <span class="popup-slider-label">Pitch</span>
+                        <input type="range" id="mobileLyricsPopupPitchSlider" min="-12" max="12" value="0" step="1" class="popup-slider popup-pitch-sync">
+                        <span id="mobileLyricsPopupPitchValue" class="popup-slider-value popup-pitch-value-sync">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="lyrics-popup-body">
+                <div class="lyrics-popup-slider">
+                    <label for="mobile-lyrics-popup-size-slider">Text Size</label>
+                    <input type="range" id="mobile-lyrics-popup-size-slider" min="0.8" max="1.6" step="0.05" value="1">
+                </div>
+                <div class="lyrics-popup-content" id="mobile-lyrics-popup-content">
+                    <!-- Mobile lyrics will be cloned here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-btn" data-page="search">
+            <i class="fas fa-search"></i>
+            <span>Search</span>
+        </button>
+        <button class="mobile-nav-btn active" data-page="library">
+            <i class="fas fa-book"></i>
+            <span>Libraries</span>
+        </button>
+        <button class="mobile-nav-btn" data-page="mixer" id="mobileNavMixer" style="display: none;">
+            <i class="fas fa-sliders-h"></i>
+            <span>Mixer</span>
+        </button>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div class="mobile-loading-overlay" id="mobileLoadingOverlay">
+        <div class="mobile-spinner"></div>
+        <p id="mobileLoadingText">Loading...</p>
+    </div>
+
+    <!-- Extraction Modal -->
+    <div class="mobile-modal" id="mobileExtractionModal">
+        <div class="mobile-modal-content">
+            <div class="mobile-modal-header">
+                <h2>Extraction Options</h2>
+                <button class="mobile-modal-close" id="mobileExtractionClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mobile-modal-body">
+                <div class="mobile-modal-section">
+                    <h3 id="mobileExtractionTitle">Track title</h3>
+                    <p id="mobileExtractionPath" class="mobile-modal-path">/path/to/audio.mp3</p>
+                </div>
+
+                <div class="mobile-modal-section">
+                    <label for="mobileExtractionModel">Stem model</label>
+                    <select id="mobileExtractionModel" class="mobile-input">
+                        <option value="htdemucs" data-stems="vocals,drums,bass,other" selected>htdemucs (recommended)</option>
+                        <option value="htdemucs_ft" data-stems="vocals,drums,bass,other">htdemucs_ft (fine-tuned)</option>
+                        <option value="htdemucs_6s" data-stems="vocals,drums,bass,guitar,piano,other">htdemucs_6s (6 stems)</option>
+                        <option value="mdx_extra" data-stems="vocals,drums,bass,other">mdx_extra (vocal focus)</option>
+                        <option value="mdx_extra_q" data-stems="vocals,drums,bass,other" disabled>mdx_extra_q (requires diffq)</option>
+                    </select>
+                    <p id="mobileExtractionModelDescription" class="mobile-modal-hint"></p>
+                </div>
+
+                <div class="mobile-modal-section">
+                    <label>Select stems to extract</label>
+                    <div class="mobile-stem-checkboxes" id="mobileExtractionStems"></div>
+                </div>
+
+                    <div class="mobile-modal-section mobile-two-stem-row">
+                        <label class="mobile-switch">
+                            <input type="checkbox" id="mobileTwoStemMode">
+                            <span>Two-stem mode (one stem vs the rest)</span>
+                        </label>
+                    </div>
+
+                <div class="mobile-modal-section" id="mobilePrimaryStemContainer" style="display: none;">
+                    <label for="mobilePrimaryStem">Primary stem</label>
+                    <select id="mobilePrimaryStem" class="mobile-input">
+                        <option value="vocals" selected>Vocals</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mobile-modal-footer">
+                <button class="mobile-btn mobile-btn-primary mobile-modal-action" id="mobileExtractionStartBtn">Start Extraction</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/mobile-app.js') }}?v={{ cache_buster }}"></script>
+</body>
+</html>

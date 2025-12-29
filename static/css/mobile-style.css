@@ -1,0 +1,2899 @@
+/* ================================================
+   StemTube Mobile Optimized Styles
+   Clean, compact interface for mobile devices
+   ================================================ */
+
+/* CSS Variables for Mobile */
+:root {
+    --mobile-primary: #1DB954;
+    --mobile-primary-dark: #148a3c;
+    --mobile-bg: #121212;
+    --mobile-bg-secondary: #1e1e1e;
+    --mobile-bg-tertiary: #282828;
+    --mobile-text: #ffffff;
+    --mobile-text-secondary: #b3b3b3;
+    --mobile-border: #333333;
+    --mobile-header-height: 56px;
+    --mobile-nav-height: 60px;
+    --mobile-spacing: 12px;
+    --mobile-radius: 8px;
+}
+
+/* Reset and Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: var(--mobile-bg);
+    color: var(--mobile-text);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-header-height);
+    background: var(--mobile-bg-secondary);
+    border-bottom: 1px solid var(--mobile-border);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--mobile-spacing);
+}
+
+.mobile-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.mobile-logo {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.mobile-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobile-username {
+    font-size: 13px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-icon-btn {
+    background: none;
+    border: none;
+    color: var(--mobile-text);
+    font-size: 20px;
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.mobile-icon-btn:active {
+    color: var(--mobile-primary);
+}
+
+/* Main Content */
+.mobile-main {
+    position: fixed;
+    top: var(--mobile-header-height);
+    left: 0;
+    right: 0;
+    bottom: var(--mobile-nav-height);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mobile-page {
+    display: none;
+    min-height: 100%;
+    padding: var(--mobile-spacing);
+}
+
+#mobileMixerPage {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.mobile-page.active {
+    display: block;
+}
+
+/* Search Page */
+.mobile-search-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mobile-spacing);
+}
+
+.mobile-search-box {
+    display: flex;
+    gap: 8px;
+}
+
+.mobile-input {
+    flex: 1;
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    color: var(--mobile-text);
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.mobile-input:focus {
+    outline: none;
+    border-color: var(--mobile-primary);
+}
+
+.mobile-btn {
+    background: var(--mobile-primary);
+    border: none;
+    border-radius: var(--mobile-radius);
+    color: white;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mobile-btn:active {
+    background: var(--mobile-primary-dark);
+}
+
+.mobile-btn-primary {
+    background: var(--mobile-primary);
+}
+
+.mobile-btn-ghost {
+    background: transparent;
+    border: 1px solid var(--mobile-border);
+    color: var(--mobile-text);
+    padding: 8px 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mobile-btn-ghost:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-btn-small {
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    border-radius: 4px;
+    color: var(--mobile-text);
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.mobile-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-search-result {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mobile-result-thumbnail {
+    width: 80px;
+    height: 60px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.mobile-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-result-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.mobile-result-channel {
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobile-btn-icon {
+    background: var(--mobile-primary);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Library Pages */
+.mobile-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--mobile-spacing);
+}
+
+.mobile-section-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.mobile-library-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-library-item {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.mobile-library-thumbnail {
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.mobile-library-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobile-library-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-library-status {
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-library-extracted {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mobile-primary);
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.mobile-library-status-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+    margin-bottom: 4px;
+}
+
+.mobile-status-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--mobile-bg-tertiary);
+    color: var(--mobile-text);
+    text-transform: capitalize;
+}
+
+.mobile-status-pill.status-ready,
+.mobile-status-pill.status-completed {
+    background: rgba(29, 185, 84, 0.18);
+    color: var(--mobile-primary);
+}
+
+.mobile-status-pill.status-downloading,
+.mobile-status-pill.status-active {
+    background: rgba(29, 185, 84, 0.12);
+    color: var(--mobile-primary);
+}
+
+.mobile-status-pill.status-queued,
+.mobile-status-pill.status-idle,
+.mobile-status-pill.status-not-extracted {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-status-pill.status-extracting,
+.mobile-status-pill.status-processing {
+    background: rgba(56, 156, 255, 0.18);
+    color: #4ab1ff;
+}
+
+.mobile-status-pill.status-failed,
+.mobile-status-pill.status-error {
+    background: rgba(255, 99, 99, 0.2);
+    color: #ff6b6b;
+}
+
+.mobile-status-detail {
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-progress-container {
+    margin-top: 6px;
+}
+
+.mobile-progress-container.is-hidden {
+    display: none;
+}
+
+.mobile-progress-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--mobile-bg-tertiary);
+    overflow: hidden;
+}
+
+.mobile-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--mobile-primary);
+    transition: width 0.3s ease;
+}
+
+.mobile-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+    margin-top: 4px;
+}
+
+.mobile-progress-value {
+    font-weight: 500;
+    color: var(--mobile-text);
+}
+
+.mobile-progress-extra {
+    flex: 1;
+    text-align: right;
+}
+
+.mobile-library-actions {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Chord Timeline */
+.mobile-chord-scroll {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 0;
+    scrollbar-width: thin;
+}
+
+.mobile-chord-track {
+    position: relative;
+    min-height: 60px;
+}
+
+.mobile-chord-segment {
+    position: absolute;
+    top: 10px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(29, 185, 84, 0.4);
+    background: rgba(29, 185, 84, 0.16);
+    color: #1db954;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s, border 0.15s;
+}
+
+.mobile-chord-segment.active {
+    background: rgba(29, 185, 84, 0.35);
+    border-color: #1db954;
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.mobile-chord-name {
+    font-size: 14px;
+}
+
+.mobile-chord-time {
+    font-size: 10px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-chord-playhead {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: #ff6b6b;
+    z-index: 20;
+    pointer-events: none;
+    transition: transform 0.05s linear;
+}
+
+.mobile-chord-diagram-panel {
+    margin-top: 6px;
+    padding: 8px 2px 8px;
+    border-radius: 12px;
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+}
+
+.mobile-chord-diagram-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 0 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mobile-text-secondary);
+}
+
+/* Tablettes et desktop - plus d'espace */
+@media (min-width: 768px) {
+    .mobile-chord-diagram-panel {
+        padding: 10px 4px 12px;
+    }
+
+    .mobile-chord-diagram-header {
+        margin-bottom: 10px;
+        font-size: 13px;
+    }
+}
+
+.mobile-chord-instrument-toggle {
+    display: inline-flex;
+    border: 1px solid var(--mobile-border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.mobile-chord-instrument-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--mobile-text);
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.mobile-chord-instrument-toggle button.active {
+    background: var(--mobile-primary);
+    color: #000;
+}
+
+.mobile-chord-diagram-carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 2px;
+    min-height: 280px;
+    position: relative;
+    overflow: visible;
+}
+
+.mobile-chord-diagram {
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+/* Mobile portrait - diagrammes rapprochés, pas de 100% de largeur totale */
+.mobile-chord-diagram-prev {
+    flex: 0 0 auto;
+    width: 24%;
+    max-width: 180px;
+    opacity: 0.75;
+    transform: scale(0.75) translateY(15px);
+    z-index: 1;
+}
+
+.mobile-chord-diagram-next {
+    flex: 0 0 auto;
+    width: 24%;
+    max-width: 180px;
+    opacity: 0.75;
+    transform: scale(0.75) translateY(15px);
+    z-index: 1;
+}
+
+.mobile-chord-diagram-current {
+    flex: 0 0 auto;
+    width: 32%;
+    max-width: 280px;
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    z-index: 2;
+}
+
+.mobile-chord-diagram-label {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 2px;
+    color: var(--mobile-text);
+    line-height: 1.2;
+}
+
+.mobile-chord-diagram-current .mobile-chord-diagram-label {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.mobile-chord-diagram-prev .mobile-chord-diagram-label,
+.mobile-chord-diagram-next .mobile-chord-diagram-label {
+    font-size: 14px;
+    margin-bottom: 1px;
+}
+
+/* Mobile paysage - optimiser l'espace vertical */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-chord-diagram-panel {
+        padding: 4px 2px 4px;
+    }
+
+    .mobile-chord-diagram-header {
+        margin-bottom: 3px;
+        font-size: 11px;
+    }
+
+    .mobile-chord-diagram-carousel {
+        min-height: 200px;
+        padding: 4px 2px;
+        gap: 5px;
+    }
+
+    .mobile-chord-diagram-prev {
+        width: 24%;
+        max-width: 180px;
+        opacity: 0.75;
+        transform: scale(0.72) translateY(15px);
+    }
+
+    .mobile-chord-diagram-next {
+        width: 24%;
+        max-width: 180px;
+        opacity: 0.75;
+        transform: scale(0.72) translateY(15px);
+    }
+
+    .mobile-chord-diagram-current {
+        width: 32%;
+        max-width: 260px;
+        transform: scale(0.9) translateY(0);
+    }
+
+    .mobile-chord-diagram-current .mobile-chord-diagram-label {
+        font-size: 18px;
+        margin-bottom: 3px;
+    }
+
+    .mobile-chord-diagram-prev .mobile-chord-diagram-label,
+    .mobile-chord-diagram-next .mobile-chord-diagram-label {
+        font-size: 12px;
+    }
+}
+
+/* Tablettes et petits laptops (iPad, petit ThinkPad) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .mobile-chord-diagram-carousel {
+        min-height: 320px;
+        padding: 10px 4px;
+        gap: 8px;
+    }
+
+    .mobile-chord-diagram-prev {
+        width: 26%;
+        max-width: 200px;
+        opacity: 0.7;
+        transform: scale(0.75) translateY(22px);
+    }
+
+    .mobile-chord-diagram-next {
+        width: 26%;
+        max-width: 200px;
+        opacity: 0.7;
+        transform: scale(0.75) translateY(22px);
+    }
+
+    .mobile-chord-diagram-current {
+        width: 34%;
+        max-width: 300px;
+        transform: scale(1) translateY(0);
+    }
+
+    .mobile-chord-diagram-current .mobile-chord-diagram-label {
+        font-size: 22px;
+        margin-bottom: 6px;
+    }
+
+    .mobile-chord-diagram-prev .mobile-chord-diagram-label,
+    .mobile-chord-diagram-next .mobile-chord-diagram-label {
+        font-size: 14px;
+    }
+}
+
+/* Desktop et grands écrans */
+@media (min-width: 1025px) {
+    .mobile-chord-diagram-carousel {
+        min-height: 360px;
+        padding: 12px 6px;
+        gap: 12px;
+    }
+
+    .mobile-chord-diagram-prev {
+        width: 24%;
+        max-width: 220px;
+        opacity: 0.7;
+        transform: scale(0.78) translateY(25px);
+    }
+
+    .mobile-chord-diagram-next {
+        width: 24%;
+        max-width: 220px;
+        opacity: 0.7;
+        transform: scale(0.78) translateY(25px);
+    }
+
+    .mobile-chord-diagram-current {
+        width: 32%;
+        max-width: 340px;
+        transform: scale(1) translateY(0);
+    }
+
+    .mobile-chord-diagram-current .mobile-chord-diagram-label {
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+
+    .mobile-chord-diagram-prev .mobile-chord-diagram-label,
+    .mobile-chord-diagram-next .mobile-chord-diagram-label {
+        font-size: 15px;
+    }
+}
+
+
+.guitar-diagram {
+    width: 100%;
+    max-width: 540px;
+    min-width: 0;
+    margin: 0 auto;
+    color: var(--mobile-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Diagrammes dans le carousel - pas de margin auto pour rapprocher */
+.mobile-chord-diagram-prev .guitar-diagram,
+.mobile-chord-diagram-next .guitar-diagram {
+    margin: 0;
+    max-width: 100%;
+}
+
+.mobile-chord-diagram-current .guitar-diagram {
+    margin: 0;
+    max-width: 100%;
+}
+
+.guitar-svg-wrapper {
+    width: 100%;
+    height: clamp(200px, 60vw, 480px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ajustements pour les SVG sur mobile portrait */
+@media (max-width: 767px) and (orientation: portrait) {
+    .guitar-svg-wrapper {
+        height: clamp(180px, 55vw, 280px);
+    }
+}
+
+/* Ajustements pour les SVG sur mobile paysage - encore plus compact */
+@media (max-width: 767px) and (orientation: landscape) {
+    .guitar-svg-wrapper {
+        height: clamp(140px, 40vw, 200px);
+    }
+}
+
+/* Tablettes et petits laptops */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .guitar-svg-wrapper {
+        height: clamp(240px, 65vw, 360px);
+    }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+    .guitar-svg-wrapper {
+        height: clamp(300px, 70vw, 420px);
+    }
+}
+
+.guitar-svg-wrapper svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.guitar-fret-label {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mobile-text-secondary);
+}
+
+/* Mode paysage - fret label plus compact */
+@media (max-width: 767px) and (orientation: landscape) {
+    .guitar-fret-label {
+        margin-top: 3px;
+        font-size: 11px;
+    }
+}
+
+/* Cette règle est maintenant gérée par le mobile-first design ci-dessus */
+
+.piano-diagram {
+    width: 100%;
+    max-width: 220px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Piano dans le carousel - pas de margin auto */
+.mobile-chord-diagram-prev .piano-diagram,
+.mobile-chord-diagram-next .piano-diagram,
+.mobile-chord-diagram-current .piano-diagram {
+    margin: 0;
+    max-width: 100%;
+}
+
+.piano-wrapper {
+    position: relative;
+    width: 100%;
+    height: 70px;
+}
+
+/* Ajustements pour le piano sur mobile paysage */
+@media (max-width: 767px) and (orientation: landscape) {
+    .piano-diagram {
+        max-width: 200px;
+    }
+
+    .piano-wrapper {
+        height: 55px;
+    }
+}
+
+/* Ajustements pour le piano sur tablettes */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .piano-diagram {
+        max-width: 260px;
+    }
+
+    .piano-wrapper {
+        height: 80px;
+    }
+}
+
+/* Ajustements pour le piano sur desktop */
+@media (min-width: 1025px) {
+    .piano-diagram {
+        max-width: 300px;
+    }
+
+    .piano-wrapper {
+        height: 90px;
+    }
+}
+
+.piano-white-keys {
+    display: flex;
+    height: 100%;
+}
+
+.piano-white-key {
+    flex: 1;
+    border: 1px solid var(--mobile-border);
+    border-right: none;
+    background: #fdfdfd;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: 11px;
+    color: #222;
+}
+
+.piano-white-key span {
+    margin-bottom: 4px;
+    font-size: 10px;
+}
+
+.piano-white-key:last-child {
+    border-right: 1px solid var(--mobile-border);
+}
+
+.piano-white-key.active {
+    background: var(--mobile-primary);
+    color: #000;
+    font-weight: 600;
+}
+
+.piano-black-keys {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 60%;
+    width: 100%;
+    pointer-events: none;
+}
+
+.piano-black-key {
+    position: absolute;
+    width: 14%;
+    height: 100%;
+    background: #111;
+    border: 1px solid #000;
+    border-radius: 0 0 4px 4px;
+    transform: translateX(-50%);
+}
+
+.piano-black-key.active {
+    background: var(--mobile-primary);
+}
+
+/* Extraction Modal */
+.mobile-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.mobile-modal.visible {
+    display: flex;
+}
+
+.mobile-modal-content {
+    background: var(--mobile-bg-secondary);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.mobile-modal-header,
+.mobile-modal-footer {
+    padding: 16px;
+    border-bottom: 1px solid var(--mobile-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mobile-modal-footer {
+    border-top: 1px solid var(--mobile-border);
+    border-bottom: none;
+}
+
+.mobile-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.mobile-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--mobile-text);
+    font-size: 20px;
+}
+
+.mobile-modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-modal-section label {
+    font-size: 13px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-modal-path {
+    font-size: 12px;
+    color: var(--mobile-text-secondary);
+    word-break: break-all;
+}
+
+.mobile-modal-hint {
+    font-size: 12px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-stem-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.mobile-stem-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--mobile-border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.mobile-stem-option input[type="checkbox"] {
+    accent-color: var(--mobile-primary);
+}
+
+.mobile-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--mobile-text);
+}
+
+.mobile-switch input[type="checkbox"] {
+    accent-color: var(--mobile-primary);
+}
+
+.mobile-modal-action {
+    width: 100%;
+}
+
+/* Mixer Page */
+.mobile-mixer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--mobile-spacing);
+}
+
+.mobile-mixer-title {
+    font-size: 16px;
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-mixer-tabs {
+    display: flex;
+    background: var(--mobile-bg-secondary);
+    border-radius: var(--mobile-radius);
+    padding: 4px;
+    margin-bottom: var(--mobile-spacing);
+    gap: 4px;
+}
+
+.mobile-mixer-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--mobile-text-secondary);
+    padding: 10px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.mobile-mixer-tab i {
+    font-size: 16px;
+}
+
+.mobile-mixer-tab.active {
+    background: var(--mobile-bg-tertiary);
+    color: var(--mobile-primary);
+}
+
+.mobile-mixer-content {
+    display: none;
+}
+
+.mobile-mixer-content.active {
+    display: block;
+}
+
+/* Playback Controls */
+.mobile-playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: var(--mobile-spacing);
+}
+
+.mobile-play-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    border: none;
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.mobile-time-display {
+    font-size: 13px;
+    color: var(--mobile-text-secondary);
+}
+
+.mobile-progress-bar {
+    position: relative;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--mobile-spacing);
+    cursor: pointer;
+}
+
+.mobile-progress-bar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--mobile-bg-tertiary);
+    border-radius: 2px;
+}
+
+.mobile-progress-fill {
+    position: absolute;
+    left: 0;
+    height: 4px;
+    background: var(--mobile-primary);
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.mobile-progress-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+/* Track Controls */
+.mobile-tracks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mobile-track {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 12px;
+}
+
+.mobile-track-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.mobile-track-name {
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.mobile-track-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.mobile-track-btn {
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    border-radius: 4px;
+    color: var(--mobile-text-secondary);
+    width: 55px; /* Wider for text labels */
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+}
+
+.mobile-track-btn.active {
+    background: var(--mobile-primary);
+    color: white;
+    border-color: var(--mobile-primary);
+}
+
+.mobile-track-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-track-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mobile-track-label {
+    font-size: 12px;
+    color: var(--mobile-text-secondary);
+    min-width: 50px;
+}
+
+.mobile-track-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--mobile-bg-tertiary);
+    outline: none;
+}
+
+.mobile-track-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    cursor: pointer;
+}
+
+.mobile-track-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    cursor: pointer;
+    border: none;
+}
+
+.mobile-track-value {
+    font-size: 12px;
+    color: var(--mobile-text);
+    min-width: 40px;
+    text-align: right;
+}
+
+/* Chord Controls */
+.mobile-chord-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: var(--mobile-spacing);
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 12px;
+}
+
+.mobile-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-control-group label {
+    font-size: 12px;
+    color: var(--mobile-text-secondary);
+    font-weight: 500;
+}
+
+.mobile-slider-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mobile-slider-control input[type="range"] {
+    flex: 1;
+}
+
+.mobile-slider-control span {
+    font-size: 13px;
+    min-width: 40px;
+    text-align: center;
+    color: var(--mobile-text);
+}
+
+/* Chord Timeline */
+.mobile-chord-timeline {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 8px 10px 12px;
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mobile-chord-item {
+    background: var(--mobile-bg-tertiary);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-chord-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--mobile-primary);
+}
+
+.mobile-chord-time {
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+}
+
+/* Lyrics Display */
+.mobile-lyrics-action-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.mobile-lyrics-action-row .mobile-btn {
+    min-width: 0;
+}
+
+.mobile-chord-action-row {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0;
+}
+
+.mobile-chord-action-row .mobile-btn {
+    min-width: 0;
+}
+
+.mobile-lyrics-display {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 16px;
+    min-height: 320px;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    position: relative;
+}
+
+/* Add padding space at top and bottom for better scrolling */
+.mobile-lyrics-display::before,
+.mobile-lyrics-display::after {
+    content: '';
+    display: block;
+    height: 35vh;
+    flex-shrink: 0;
+}
+
+.mobile-lyrics-display::before {
+    height: 30vh;
+}
+
+.mobile-lyrics-placeholder {
+    color: var(--mobile-text-secondary);
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.mobile-lyrics-line {
+    padding: 12px 0;
+    font-size: 14px;
+    line-height: 2;
+    transition: opacity 0.3s ease, font-size 0.2s ease, font-weight 0.2s ease, filter 0.3s ease;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 4px 0;
+}
+
+.mobile-lyrics-line:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-lyrics-line.active {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.mobile-lyrics-line.past {
+    opacity: 0.5;
+}
+
+.mobile-lyrics-line.recent-past {
+    opacity: 0.7;
+}
+
+.mobile-lyrics-line.hidden-past,
+.mobile-lyrics-line.hidden-future {
+    opacity: 0.3;
+    filter: blur(0.3px);
+}
+
+.mobile-lyrics-line.up-next {
+    opacity: 0.85;
+}
+
+.mobile-lyrics-line.future {
+    opacity: 0.7;
+}
+
+.mobile-lyrics-time {
+    flex-shrink: 0;
+    width: 45px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-family: 'Courier New', monospace;
+    padding-top: 2px;
+}
+
+.mobile-lyrics-text {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;                /* Space between words */
+}
+
+.mobile-lyrics-word {
+    display: inline;
+    transition: all 0.1s ease;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* Word states (karaoke-style) */
+.mobile-lyrics-word.word-future {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.mobile-lyrics-word.word-current {
+    color: transparent;
+    font-weight: 600;
+    /* Gradient applied via inline style in JS */
+}
+
+.mobile-lyrics-word.word-past {
+    color: transparent;
+    /* Full color fill applied via inline style in JS */
+}
+
+/* ============================================ */
+/* SONGBOOK-STYLE CHORD ANNOTATIONS ON LYRICS  */
+/* ============================================ */
+
+.mobile-lyrics-text.songbook-style {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    align-items: flex-end;
+}
+
+.mobile-lyrics-word-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    margin-bottom: 2px;
+}
+
+.mobile-lyrics-chord {
+    display: block;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: var(--mobile-accent);
+    line-height: 1.2;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.9;
+}
+
+/* Active line chord highlight */
+.mobile-lyrics-line.active .mobile-lyrics-chord {
+    color: var(--mobile-accent);
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(var(--mobile-accent-rgb, 76, 175, 80), 0.4);
+}
+
+/* Past line chord fading */
+.mobile-lyrics-line.past .mobile-lyrics-chord {
+    color: var(--mobile-text-muted);
+    opacity: 0.6;
+}
+
+/* Future line chord styling */
+.mobile-lyrics-line.future .mobile-lyrics-chord {
+    color: var(--mobile-text-secondary);
+    opacity: 0.7;
+}
+
+/* Songbook style in Lyrics Focus Popup */
+.lyrics-popup-content .mobile-lyrics-text.songbook-style {
+    gap: 6px 10px;
+}
+
+.lyrics-popup-content .mobile-lyrics-word-wrapper {
+    margin-bottom: 4px;
+}
+
+.lyrics-popup-content .mobile-lyrics-chord {
+    font-size: 0.8em;
+    margin-bottom: 3px;
+}
+
+.lyrics-popup-content .mobile-lyrics-line.active .mobile-lyrics-chord {
+    font-size: 0.85em;
+}
+
+/* Bottom Navigation */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-nav-height);
+    background: var(--mobile-bg-secondary);
+    border-top: 1px solid var(--mobile-border);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+}
+
+.mobile-nav-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--mobile-text-secondary);
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    transition: color 0.2s;
+}
+
+.mobile-nav-btn i {
+    font-size: 20px;
+}
+
+.mobile-nav-btn.active {
+    color: var(--mobile-primary);
+}
+
+/* Loading Overlay */
+.mobile-loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.mobile-loading-overlay.show {
+    display: flex;
+}
+
+.mobile-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--mobile-bg-tertiary);
+    border-top-color: var(--mobile-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#mobileLoadingText {
+    color: var(--mobile-text);
+    font-size: 14px;
+}
+
+/* Utility Classes */
+.mobile-hidden {
+    display: none !important;
+}
+
+.mobile-text-center {
+    text-align: center;
+}
+
+.mobile-text-small {
+    font-size: 11px;
+}
+
+.mobile-text-muted {
+    color: var(--mobile-text-secondary);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 375px) {
+    .mobile-body {
+        font-size: 13px;
+    }
+
+    .mobile-result-thumbnail {
+        width: 70px;
+        height: 50px;
+    }
+
+    .mobile-library-thumbnail {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* iOS Safe Area Support */
+@supports (padding: max(0px)) {
+    .mobile-header {
+        padding-left: max(var(--mobile-spacing), env(safe-area-inset-left));
+        padding-right: max(var(--mobile-spacing), env(safe-area-inset-right));
+    }
+
+    .mobile-bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+    }
+
+    .mobile-main {
+        bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+    }
+}
+
+/* Chord Timeline Styles */
+.mobile-chord-timeline-grid {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    max-height: 140px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.mobile-timeline-scroll {
+    position: relative;
+    min-width: 100%;
+}
+
+.mobile-measure-bar {
+    position: absolute;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    height: 100%;
+}
+
+.mobile-chord-box {
+    position: absolute;
+    background: rgba(29, 185, 84, 0.25);
+    border: 1px solid rgba(29, 185, 84, 0.6);
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.mobile-chord-box:active {
+    background: rgba(29, 185, 84, 0.5);
+    transform: scale(0.95);
+}
+
+.mobile-playhead {
+    position: absolute;
+    background: #ff4444;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
+}
+
+.mobile-chords-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--mobile-text-secondary);
+    font-size: 14px;
+}
+
+/* ================================================
+   Mobile Library Sub-tabs
+   ================================================ */
+.mobile-library-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--mobile-bg-secondary);
+    border-bottom: 1px solid var(--mobile-border);
+}
+
+.mobile-library-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    color: var(--mobile-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mobile-library-tab.active {
+    background: var(--mobile-primary);
+    color: var(--mobile-text);
+    border-color: var(--mobile-primary);
+}
+
+.mobile-library-tab i {
+    font-size: 16px;
+}
+
+.mobile-library-content {
+    display: none;
+    padding: 12px;
+}
+
+.mobile-library-content.active {
+    display: block;
+}
+
+/* ================================================
+   Unified Control Bar (Play/Pause/Stop + Tempo/Pitch)
+   ================================================ */
+.mobile-unified-controls {
+    background: var(--mobile-bg-secondary);
+    border: 1px solid var(--mobile-border);
+    border-radius: var(--mobile-radius);
+    padding: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: block;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Mode paysage mobile - tout sur une ligne */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-unified-controls {
+        padding: 6px 8px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+}
+
+.mobile-playback-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Mode paysage - tout sur une ligne, pas de marge en bas */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-playback-row {
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+}
+
+.mobile-control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    border: none;
+    color: var(--mobile-text);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Mode paysage - boutons plus petits */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-control-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+}
+
+.mobile-control-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-control-btn i {
+    pointer-events: none;
+}
+
+.mobile-time-display {
+    min-width: 70px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mobile-text-secondary);
+}
+
+/* Mode paysage - texte plus petit */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-time-display {
+        min-width: 60px;
+        font-size: 10px;
+    }
+}
+
+.mobile-control-sliders-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+/* Mode paysage - disposition horizontale compacte */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-control-sliders-row {
+        gap: 8px;
+        flex: 1;
+        align-items: center;
+        margin-bottom: 0;
+    }
+}
+
+.mobile-slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Mode paysage - slider horizontal compact */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-slider-group {
+        gap: 2px;
+        flex-direction: row;
+        align-items: center;
+        flex: 0 0 auto;
+        min-width: 120px;
+        max-width: 150px;
+    }
+}
+
+.mobile-slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--mobile-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Mode paysage - labels en ligne compacts */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-slider-label {
+        font-size: 9px;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 1px;
+        min-width: 45px;
+        flex-shrink: 0;
+    }
+}
+
+.mobile-slider-label .mobile-value {
+    font-size: 11px;
+    min-width: unset;
+}
+
+/* Mode paysage - valeurs plus compactes */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-slider-label .mobile-value {
+        font-size: 10px;
+    }
+}
+
+.mobile-slider {
+    width: 100%;
+    height: 4px;
+    border-radius: 3px;
+    background: var(--mobile-bg-tertiary);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+/* Mode paysage - slider compact */
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-slider {
+        height: 3px;
+        min-width: 60px;
+        flex: 1;
+    }
+}
+
+.mobile-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-value {
+    font-size: 11px;
+    color: var(--mobile-primary);
+    font-weight: 600;
+    min-width: 26px;
+}
+
+/* ================================================
+   Single Global Waveform Container
+   ================================================ */
+.mobile-waveform-container {
+    position: relative;
+    width: 100%;
+    height: 140px; /* Increased to accommodate timeline */
+    background: var(--mobile-bg-tertiary);
+    border-radius: var(--mobile-radius);
+    margin: 12px 0;
+    overflow: hidden;
+    padding-top: 20px; /* Space for timeline */
+}
+
+/* Mode desktop - waveform plus compact pour voir accords + diagrammes */
+@media (min-width: 1025px) {
+    .mobile-waveform-container {
+        height: 100px;
+        margin: 8px 0;
+    }
+}
+
+.mobile-waveform {
+    width: 100%;
+    height: calc(100% - 20px); /* Subtract timeline height */
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-waveform-container .mobile-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    z-index: 2;
+}
+
+.mobile-waveform-container .mobile-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--mobile-primary);
+    transition: width 0.1s linear;
+}
+
+.mobile-waveform-container .mobile-progress-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: var(--mobile-primary);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(29, 185, 84, 0.6);
+}
+
+/* ================================================
+   Responsive adjustments
+   ================================================ */
+@media (max-width: 360px) {
+    .mobile-control-sliders-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .mobile-slider-group {
+        width: 100%;
+    }
+}
+
+/* ================================================
+   Waveform Timeline (Graduation)
+   ================================================ */
+.mobile-waveform-timeline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    pointer-events: none;
+}
+
+.mobile-timeline-marker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.mobile-timeline-tick {
+    width: 1px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    margin-bottom: 2px;
+}
+
+.mobile-timeline-label {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.mobile-timeline-marker:first-child .mobile-timeline-label {
+    transform: translateX(0);
+}
+
+.mobile-timeline-marker:last-child .mobile-timeline-label {
+    transform: translateX(-100%);
+}
+
+
+/* ================================================
+   Playhead Vertical (Position Indicator)
+   ================================================ */
+.mobile-playhead {
+    position: absolute;
+    top: 20px; /* Below timeline */
+    bottom: 28px; /* Above seek bar */
+    left: 0;
+    width: 3px;
+    z-index: 5;
+    pointer-events: none;
+    transition: left 0.05s linear;
+}
+
+.mobile-playhead-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: linear-gradient(180deg, 
+        rgba(255, 59, 59, 0.9) 0%, 
+        rgba(255, 59, 59, 1) 50%, 
+        rgba(255, 59, 59, 0.9) 100%);
+    box-shadow: 0 0 8px rgba(255, 59, 59, 0.6),
+                0 0 4px rgba(255, 59, 59, 0.8);
+}
+
+.mobile-playhead-handle {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #ff3b3b;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ================================================
+   Seek Bar (Bottom Interactive Bar)
+   ================================================ */
+.mobile-seek-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    z-index: 4;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-seek-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        var(--mobile-primary) 0%, 
+        rgba(29, 185, 84, 0.8) 100%);
+    transition: width 0.1s linear;
+    pointer-events: none;
+}
+
+.mobile-seek-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border: 2px solid var(--mobile-primary);
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: grab;
+    transition: transform 0.1s ease;
+}
+
+.mobile-seek-handle:active {
+    transform: translate(-50%, -50%) scale(1.2);
+    cursor: grabbing;
+}
+
+/* Remove old progress bar styles if they conflict */
+.mobile-waveform-container .mobile-progress-bar {
+    display: none; /* Hide old progress bar */
+}
+
+/* ============================================ */
+/* CHORD LINEAR VIEW WITH GRID (MOBILE)        */
+/* ============================================ */
+
+.chord-linear-scroll {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1rem 0;
+    scrollbar-width: thin;
+    scroll-behavior: auto; /* Instant scroll to maintain focus on 4th beat */
+    -webkit-overflow-scrolling: touch;
+}
+
+.chord-linear-track {
+    position: relative;
+    display: flex;
+    gap: 0;
+    min-height: 100px;
+}
+
+.chord-linear-measure {
+    display: flex;
+    flex-direction: column;
+    min-width: max-content;
+    border-right: 2px solid var(--mobile-border);
+    transition: background 0.2s ease;
+}
+
+.chord-linear-measure.active {
+    background: rgba(29, 185, 84, 0.08);
+}
+
+.chord-linear-chord-row {
+    display: flex;
+    gap: 1px;
+    background: var(--mobile-bg-secondary);
+}
+
+.chord-linear-beat {
+    width: 80px;
+    height: 50px;
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chord-linear-beat:active {
+    transform: scale(0.95);
+}
+
+.chord-linear-beat.active {
+    background: rgba(29, 185, 84, 0.3);
+    border-color: var(--mobile-primary);
+    box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.3);
+}
+
+.chord-linear-beat.empty {
+    background: var(--mobile-bg-primary);
+    opacity: 0.5;
+    cursor: default;
+}
+
+.chord-linear-beat.empty:active {
+    transform: none;
+}
+
+.chord-linear-beat-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--mobile-text);
+}
+
+.chord-linear-beat.empty .chord-linear-beat-name {
+    color: var(--mobile-text-muted);
+    font-weight: 400;
+}
+
+.chord-linear-lyrics-row {
+    min-height: 36px;
+    padding: 0.5rem;
+    font-size: 0.813rem;
+    color: var(--mobile-text-secondary);
+    background: var(--mobile-bg-primary);
+    border-top: 1px solid var(--mobile-border);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chord-linear-playhead {
+    display: none; /* Playhead not needed - only highlighted beat is shown */
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--mobile-primary) 0%, rgba(29, 185, 84, 0.8) 100%);
+    z-index: 20;
+    pointer-events: none;
+    transition: transform 0.1s linear;
+    box-shadow: 0 0 8px rgba(29, 185, 84, 0.6);
+}
+
+.chord-linear-playhead::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--mobile-primary);
+}
+
+/* Adjust for larger mobile screens */
+@media (min-width: 600px) {
+    .chord-linear-beat {
+        width: 100px;
+        height: 60px;
+    }
+
+    .chord-linear-beat-name {
+        font-size: 1.1rem;
+    }
+
+    .chord-linear-lyrics-row {
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================ */
+/* CHORDS GRID POPUP (MOBILE)                  */
+/* ============================================ */
+
+.chords-grid-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.chords-grid-popup-overlay[aria-hidden="false"] {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.chords-grid-popup-dialog {
+    background: var(--mobile-bg-primary);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 95vw;
+    max-height: 95vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.chords-grid-popup-overlay[aria-hidden="false"] .chords-grid-popup-dialog {
+    transform: scale(1);
+}
+
+.chords-grid-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--mobile-border);
+    background: var(--mobile-bg-secondary);
+    border-radius: 16px 16px 0 0;
+}
+
+.chords-grid-popup-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--mobile-text);
+}
+
+.chords-grid-popup-close {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--mobile-border);
+    border-radius: 8px;
+    color: var(--mobile-text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chords-grid-popup-close:active {
+    background: var(--mobile-bg-tertiary);
+    transform: scale(0.95);
+}
+
+.chords-grid-popup-body {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+}
+
+.chords-grid-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chord-grid-measure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--mobile-bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--mobile-border);
+}
+
+.chord-grid-measure-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mobile-text-secondary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--mobile-border);
+}
+
+.chord-grid-beats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.chord-grid-beat {
+    padding: 1rem 0.75rem;
+    background: var(--mobile-bg-tertiary);
+    border: 1px solid var(--mobile-border);
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chord-grid-beat:active {
+    transform: scale(0.95);
+}
+
+.chord-grid-beat.active {
+    background: rgba(29, 185, 84, 0.2);
+    border-color: var(--mobile-primary);
+    box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.1);
+}
+
+.chord-grid-beat-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--mobile-text);
+    margin-bottom: 0.25rem;
+}
+
+.chord-grid-beat-time {
+    font-size: 0.75rem;
+    color: var(--mobile-text-secondary);
+}
+
+.chord-grid-beat.empty .chord-grid-beat-name {
+    color: var(--mobile-text-muted);
+    font-weight: 400;
+}
+
+/* Larger screens in mobile mode */
+@media (min-width: 600px) {
+    .chords-grid-popup-dialog {
+        max-width: 600px;
+    }
+
+    .chord-grid-beats {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .chord-grid-measure {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .chord-grid-measure-label {
+        min-width: 40px;
+        text-align: center;
+        padding-bottom: 0;
+        border-bottom: none;
+        border-right: 1px solid var(--mobile-border);
+        padding-right: 0.75rem;
+    }
+}
+
+/* ============================================ */
+/* POPUP CONTROLS BAR (Grid View, Lyrics Focus) */
+/* ============================================ */
+
+.popup-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 0;
+    background: var(--mobile-bg-tertiary);
+    border-bottom: 1px solid var(--mobile-border);
+    box-sizing: border-box;
+    width: 100%;
+    overflow: hidden;
+}
+
+.popup-playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.popup-control-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--mobile-primary);
+    color: #000;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.popup-control-btn:active {
+    transform: scale(0.9);
+}
+
+.popup-control-btn.playing .fa-play::before {
+    content: "\f04c"; /* pause icon */
+}
+
+.popup-time-display {
+    font-size: 11px;
+    color: var(--mobile-text-secondary);
+    min-width: 70px;
+    font-family: monospace;
+    flex-shrink: 0;
+}
+
+.popup-sliders {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.popup-slider-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    max-width: 150px;
+}
+
+.popup-slider-label {
+    font-size: 10px;
+    color: var(--mobile-text-secondary);
+    min-width: 35px;
+    flex-shrink: 0;
+}
+
+.popup-slider {
+    flex: 1;
+    min-width: 40px;
+    max-width: 80px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--mobile-bg-secondary);
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.popup-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--mobile-primary);
+    cursor: pointer;
+}
+
+.popup-slider-value {
+    font-size: 10px;
+    color: var(--mobile-text);
+    min-width: 24px;
+    text-align: right;
+    font-family: monospace;
+    flex-shrink: 0;
+}
+
+/* Mobile landscape - compact controls */
+@media (max-width: 767px) and (orientation: landscape) {
+    .popup-controls-bar {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+
+    .popup-control-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+
+    .popup-time-display {
+        font-size: 10px;
+        min-width: 60px;
+    }
+
+    .popup-sliders {
+        gap: 6px;
+    }
+
+    .popup-slider-group {
+        max-width: 120px;
+    }
+
+    .popup-slider {
+        max-width: 60px;
+    }
+
+    .popup-slider-label {
+        font-size: 9px;
+        min-width: 30px;
+    }
+
+    .popup-slider-value {
+        font-size: 9px;
+        min-width: 20px;
+    }
+}
+
+/* Desktop - wider layout */
+@media (min-width: 1025px) {
+    .popup-controls-bar {
+        padding: 12px 16px;
+        gap: 16px;
+    }
+
+    .popup-control-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .popup-time-display {
+        font-size: 13px;
+        min-width: 90px;
+    }
+
+    .popup-slider-group {
+        max-width: 180px;
+    }
+
+    .popup-slider {
+        max-width: 100px;
+    }
+
+    .popup-slider-label {
+        font-size: 11px;
+    }
+
+    .popup-slider-value {
+        font-size: 12px;
+        min-width: 40px;
+    }
+}
+
+/* ============================================ */
+/* MOBILE LYRICS FOCUS POPUP                   */
+/* ============================================ */
+
+.lyrics-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: 0.5rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.lyrics-popup-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.lyrics-popup-dialog {
+    background: var(--mobile-bg-primary);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 95vw;
+    height: 95vh;
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.lyrics-popup-overlay.active .lyrics-popup-dialog {
+    transform: scale(1);
+}
+
+.lyrics-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--mobile-border);
+    background: var(--mobile-bg-secondary);
+    border-radius: 16px 16px 0 0;
+    flex-shrink: 0;
+}
+
+.lyrics-popup-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--mobile-text);
+}
+
+.lyrics-popup-close {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--mobile-border);
+    border-radius: 8px;
+    color: var(--mobile-text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lyrics-popup-close:active {
+    background: var(--mobile-bg-tertiary);
+    transform: scale(0.95);
+}
+
+.lyrics-popup-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.lyrics-popup-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--mobile-bg-tertiary);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+}
+
+.lyrics-popup-slider label {
+    font-size: 0.75rem;
+    color: var(--mobile-text-secondary);
+    white-space: nowrap;
+}
+
+.lyrics-popup-slider input[type="range"] {
+    flex: 1;
+    height: 4px;
+    background: var(--mobile-bg-secondary);
+    border-radius: 2px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.lyrics-popup-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--mobile-accent);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.lyrics-popup-content {
+    flex: 1;
+    background: var(--mobile-bg-secondary);
+    border-radius: 12px;
+    padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile lyrics line styling in popup */
+.lyrics-popup-content .mobile-lyrics-line {
+    padding: 0.75rem 0;
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: var(--mobile-text-secondary);
+    transition: all 0.3s ease;
+}
+
+.lyrics-popup-content .mobile-lyrics-line.active {
+    color: var(--mobile-text);
+    font-weight: 600;
+    font-size: 1.4rem;
+}
+
+.lyrics-popup-content .mobile-lyrics-line.past {
+    color: var(--mobile-text-muted);
+}
+
+.lyrics-popup-content .mobile-lyrics-time {
+    display: none;
+}
+
+/* Word-level karaoke in popup */
+.lyrics-popup-content .mobile-lyrics-word {
+    display: inline;
+    margin-right: 0.25em;
+    transition: all 0.15s ease;
+}
+
+.lyrics-popup-content .mobile-lyrics-word.word-current {
+    color: var(--mobile-accent);
+    font-weight: 600;
+}
+
+.lyrics-popup-content .mobile-lyrics-word.word-past {
+    color: var(--mobile-accent);
+    opacity: 0.8;
+}
+
+/* Tablet landscape - larger popup */
+@media (min-width: 600px) {
+    .lyrics-popup-dialog {
+        max-width: 700px;
+        max-height: 90vh;
+    }
+
+    .lyrics-popup-content .mobile-lyrics-line {
+        font-size: 1.4rem;
+        padding: 1rem 0;
+    }
+
+    .lyrics-popup-content .mobile-lyrics-line.active {
+        font-size: 1.6rem;
+    }
+}

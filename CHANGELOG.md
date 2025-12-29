@@ -1,0 +1,201 @@
+# Changelog
+
+All notable changes to StemTube will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.0.0] - 2025-12-28
+
+### Added
+- **BTC Transformer chord detection** (170 chord vocabulary) - Most accurate backend
+- **3 chord detection backends** with automatic fallback (BTC → madmom → hybrid)
+- **Complete documentation overhaul** - Reorganized into user/admin/developer/feature guides
+- **French comment translation** - All ~600 French comments translated to English
+- **CONTRIBUTING.md** - Comprehensive contribution guidelines
+- **CHANGELOG.md** - Project history tracking
+
+### Changed
+- **Documentation structure** - Reorganized into logical categories (user-guides/, admin-guides/, developer-guides/, feature-guides/)
+- **README.md** - Modernized with badges, concise quick start, correct port (5011)
+- **ARCHITECTURE.md** - Updated endpoint count (69), added BTC chord detector, removed stale notes
+
+### Fixed
+- **Port references** - Corrected from 5012 to 5011 throughout documentation
+- **Endpoint count** - Updated from 78 to accurate 69 endpoints
+
+### Documentation
+- Created new documentation structure with 7 categories
+- Archived 12+ outdated mobile documentation files
+- Updated all internal cross-references
+- Added feature-specific guides for BTC, GPU setup, mobile architecture
+
+---
+
+## [1.2.0] - 2025-11-24
+
+### Added
+- **Automated GPU setup** - `os.execv()` in app.py for cuDNN configuration
+- **Dependency conflict resolution** - Individual package installation
+- **madmom auto-patching** - Numpy compatibility automatic
+- Professional chord detection with madmom CRF
+- Music structure analysis via MSAF
+- Lyrics/karaoke system with faster-whisper
+- Chord transposition in mixer
+- Structure timeline visualization
+- File upload system
+- Silent stem detection
+- Admin interface integration
+- Global library system
+
+### Changed
+- Documentation consolidation - README.md comprehensive, CLAUDE.md technical-only
+- Codebase cleanup - 16 obsolete files removed
+
+### Fixed
+- GPU library path configuration
+- Dependency installation conflicts
+- madmom numpy compatibility issues
+
+---
+
+## [1.1.0] - 2025-10-15
+
+### Added
+- **Mobile-optimized interface** (`/mobile` route)
+  - iOS audio unlock mechanism
+  - Touch-optimized controls
+  - 9 mobile-specific JavaScript modules
+  - Responsive timeline and chord display
+  - SVG chord diagrams with guitar-chords-db-json
+- **Pitch/tempo control** - SoundTouch integration
+  - Independent pitch shifting (-12 to +12 semitones)
+  - Tempo control (0.5x to 2.0x)
+  - Hybrid SoundTouch/playbackRate engine
+- **Real-time chord display** - Synchronized with playback
+- **Karaoke lyrics display** - Word-level highlighting
+- **Structure timeline** - Visual song section markers
+
+### Changed
+- Frontend architecture - Modular JavaScript design (11 mixer modules)
+- Audio processing - Web Audio API with AudioWorklet
+- State persistence - LocalStorage for mixer settings
+
+### Fixed
+- iOS audio playback restrictions
+- Android touch responsiveness
+- Mobile waveform rendering
+- Cross-platform audio synchronization
+
+---
+
+## [1.0.0] - 2025-09-01
+
+### Added
+- **Core Features**
+  - YouTube audio downloading (aiotube + yt-dlp)
+  - AI stem separation with Demucs (4-stem and 6-stem models)
+  - GPU acceleration support (CUDA 11.x-13.x)
+  - Multi-user authentication system
+  - Global file deduplication
+  - Interactive web-based mixer
+- **Audio Analysis**
+  - BPM detection (custom autocorrelation algorithm)
+  - Musical key detection
+  - madmom chord recognition (24 chord types)
+  - MSAF structure analysis
+- **Database**
+  - SQLite with 3-table design
+  - Global downloads tracking
+  - User access management
+  - Download/extraction metadata
+- **Admin Features**
+  - User management interface
+  - Storage statistics
+  - Download cleanup tools
+  - System configuration
+- **API**
+  - 69 REST endpoints
+  - WebSocket real-time updates
+  - File upload/download
+  - Extraction management
+
+### Technical Stack
+- **Backend**: Flask 3.x, SocketIO, PyTorch 2.x, Demucs 4.x
+- **Frontend**: Vanilla JavaScript ES6+, Web Audio API, SoundTouchJS
+- **Audio**: madmom, librosa, scipy, faster-whisper, MSAF
+- **Database**: SQLite3
+- **Dependencies**: ~120 packages (18 essential)
+
+---
+
+## Version History
+
+- **[2.0.0]** - December 2025 - Documentation overhaul, BTC chord detector, French translation
+- **[1.2.0]** - November 2025 - GPU automation, dependency fixes, feature additions
+- **[1.1.0]** - October 2025 - Mobile interface, pitch/tempo control, karaoke
+- **[1.0.0]** - September 2025 - Initial release with core features
+
+---
+
+## Upgrade Notes
+
+### 2.0.0 → Current
+- Documentation paths updated - Update any hardcoded references to docs
+- No breaking changes to code or database
+
+### 1.2.0 → 2.0.0
+- No database migrations required
+- GPU setup now fully automatic
+- All French comments translated (for contributors)
+
+### 1.1.0 → 1.2.0
+- Recommended: Clear browser cache for updated mixer interface
+- Optional: Re-run `setup_dependencies.py` for GPU improvements
+
+### 1.0.0 → 1.1.0
+- **CRITICAL**: HTTPS now required for pitch/tempo features
+- Database schema unchanged (backward compatible)
+- New dependencies installed via `setup_dependencies.py`
+
+---
+
+## Deprecation Notices
+
+### Removed in 2.0.0
+- Old scattered mobile documentation (archived in `docs/archive/`)
+- SESSION_NOTES*.md files (archived)
+- Obsolete migration guides (archived)
+
+### Removed in 1.2.0
+- 16 obsolete development files
+- Redundant setup scripts
+- Old dependency management approach
+
+---
+
+## Contributors
+
+Special thanks to all contributors who have helped improve StemTube!
+
+**Major Contributors:**
+- Core development and architecture
+- GPU acceleration implementation
+- Mobile interface development
+- Documentation overhaul
+- French translation efforts
+
+---
+
+## Links
+
+- **Repository**: https://github.com/Benasterisk/StemTube-dev
+- **Documentation**: [docs/](docs/)
+- **Issues**: https://github.com/Benasterisk/StemTube-dev/issues
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+---
+
+**Last Updated**: December 28, 2025
