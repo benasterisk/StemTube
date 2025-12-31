@@ -236,13 +236,14 @@
                         <input type="range" id="lyricsPopupPitchSlider" min="-12" max="12" value="0" step="1" class="popup-slider popup-pitch-sync">
                         <span id="lyricsPopupPitchValue" class="popup-slider-value popup-pitch-value-sync">0</span>
                     </div>
+                    <div class="popup-slider-group">
+                        <span class="popup-slider-label">Size</span>
+                        <input type="range" id="lyrics-popup-slider" min="0.8" max="1.6" step="0.05" value="1" class="popup-slider">
+                        <span id="lyrics-popup-size-value" class="popup-slider-value">1.0x</span>
+                    </div>
                 </div>
             </div>
             <div class="lyrics-popup-body">
-                <div class="lyrics-popup-slider">
-                    <label for="lyrics-popup-slider">Text Size</label>
-                    <input type="range" id="lyrics-popup-slider" min="0.8" max="1.6" step="0.05" value="1">
-                </div>
                 <div class="lyrics-popup-content" id="lyrics-popup-lyrics">
                     <!-- Karaoke lyrics element will be moved here dynamically -->
                 </div>

@@ -576,12 +576,39 @@ class SimplePitchTempoController {
             this.currentPitchShift = (this.noteNames.indexOf(key) - this.noteNames.indexOf(this.originalKey)) % 12;
             if (this.currentPitchShift > 6) this.currentPitchShift -= 12;
             if (this.currentPitchShift < -6) this.currentPitchShift += 12;
-            
+
             this.applyEffectsToStems();
             this.updateDisplay();
         }
     }
-    
+
+    /**
+     * Set pitch shift directly in semitones (-12 to +12)
+     * @param {number} semitones - Number of semitones to shift
+     */
+    setPitchShift(semitones) {
+        // Clamp to valid range
+        const clampedShift = Math.max(-12, Math.min(12, semitones));
+
+        if (clampedShift === this.currentPitchShift) return;
+
+        console.log(`[SimplePitchTempo] setPitchShift → ${clampedShift} semitones`);
+
+        this.currentPitchShift = clampedShift;
+
+        // Update currentKey based on new pitch shift (for display purposes)
+        const originalIdx = this.noteNames.indexOf(this.originalKey);
+        let newIdx = (originalIdx + clampedShift) % 12;
+        if (newIdx < 0) newIdx += 12;
+        this.currentKey = this.noteNames[newIdx];
+
+        this.applyEffectsToStems();
+        this.updateDisplay();
+
+        // Broadcast pitch change event
+        this.updateChordDisplayPitch();
+    }
+
     resetBPM() {
         console.log(`[SimplePitchTempo] Resetting BPM from ${this.currentBPM} to ${this.originalBPM}`);
         this.currentBPM = this.originalBPM;

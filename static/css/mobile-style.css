@@ -2531,9 +2531,11 @@
     margin: 0;
     background: var(--mobile-bg-tertiary);
     border-bottom: 1px solid var(--mobile-border);
+    border-radius: 0 0 8px 8px;
     box-sizing: border-box;
     width: 100%;
-    overflow: hidden;
+    flex-shrink: 0;
+    overflow: visible;
 }
 
 .popup-playback-controls {

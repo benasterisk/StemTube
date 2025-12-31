@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2025-12-31
+
+### Added
+- **Songbook chord display** - Chords displayed above lyrics in karaoke view (desktop)
+- **Pitch shift event listener** - Lyrics popup now updates chord transpositions when pitch changes
+- **setPitchShift() method** - Direct semitone control (-12 to +12) for full octave range
+
+### Fixed
+- **Grid View scroll interruption** - Changed from smooth to auto scroll behavior to prevent jitter
+- **Pitch slider range** - Extended from ±6 to ±12 semitones for full octave transposition
+- **Pitch slider snap-back** - Fixed slider resetting to center when exceeding ±6
+- **Pitch value display** - Now updates correctly when moving popup sliders
+- **Lyrics popup text size** - Size slider now works using CSS transform scale
+- **Lyrics popup scroll focus** - Fixed lyrics scrolling out of view in popup mode
+- **Nested scroll containers** - Removed conflicting overflow-y on popup karaoke-lyrics
+
+### Changed
+- **Popup sizes increased** - Both Lyrics Focus and Grid View popups now use 98vw × 98vh
+- **Lyrics popup element refresh** - Now dynamically finds lyrics element when opening popup
+
+---
+
 ## [2.0.0] - 2025-12-28
 
 ### Added

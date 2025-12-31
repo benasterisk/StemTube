@@ -312,8 +312,8 @@
 .lyrics-popup-dialog {
     background: var(--bg-primary);
     border-radius: var(--border-radius);
-    width: min(1600px, 99vw);
-    height: min(97vh, 1100px);
+    width: 98vw;
+    height: 98vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
@@ -347,27 +347,9 @@
 .lyrics-popup-body {
     flex: 1;
     display: flex;
-    gap: 1.5rem;
+    flex-direction: column;
     padding: 1.5rem 2rem 2rem;
     min-height: 0;
-}
-
-.lyrics-popup-slider {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.25rem;
-    min-width: 60px;
-}
-
-.lyrics-popup-slider input[type="range"] {
-    writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
-    width: 32px;
-    height: 100%;
-    min-height: 200px;
-    transform: rotate(180deg);
 }
 
 .lyrics-popup-content {
@@ -381,11 +363,13 @@
 .lyrics-popup-overlay .karaoke-lyrics {
     background: transparent;
     padding: 0;
+    padding-top: 10%;
+    padding-bottom: 70%;
     max-height: none;
     font-size: 1.4rem;
     line-height: 2rem;
-    height: 100%;
-    overflow-y: auto;
+    height: auto;
+    overflow-y: visible;
 }
 
 .lyrics-popup-overlay .karaoke-lyrics.section-hidden {
@@ -2173,6 +2157,44 @@
     display: inline;
 }
 
+/* Songbook Style - Chords above lyrics */
+.karaoke-text.songbook-style {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: flex-end;
+}
+
+.karaoke-word-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    margin-bottom: 4px;
+}
+
+.karaoke-chord {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+/* Popup-specific chord styling */
+.lyrics-popup-content .karaoke-text.songbook-style {
+    gap: 6px 12px;
+}
+
+.lyrics-popup-content .karaoke-word-wrapper {
+    margin-bottom: 6px;
+}
+
+.lyrics-popup-content .karaoke-chord {
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+
 /* Karaoke Word-Level Styling */
 .karaoke-word {
     display: inline;
@@ -2450,9 +2472,8 @@
     background: var(--bg-primary);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 90vw;
-    max-height: 90vh;
-    width: 900px;
+    width: 98vw;
+    height: 98vh;
     display: flex;
     flex-direction: column;
     transform: scale(0.95);
@@ -2502,6 +2523,101 @@
     flex: 1;
     overflow: auto;
     padding: 1.5rem;
+}
+
+/* ============================================ */
+/* POPUP CONTROLS BAR (Grid View, Lyrics Focus) */
+/* ============================================ */
+
+.popup-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0 0 8px 8px;
+    flex-shrink: 0;
+    overflow: visible;
+}
+
+.popup-playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.popup-control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-color);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.popup-control-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.popup-time-display {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    min-width: 90px;
+}
+
+.popup-sliders {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.popup-slider-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popup-slider-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.popup-slider {
+    width: 80px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.popup-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.popup-slider-value {
+    font-size: 11px;
+    color: var(--text-primary);
+    min-width: 30px;
+    text-align: right;
 }
 
 .chords-grid-container {

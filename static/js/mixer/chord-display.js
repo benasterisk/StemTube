@@ -1981,17 +1981,15 @@ class ChordDisplay {
             }
         });
 
-        // Pitch sliders
+        // Pitch sliders - use direct semitone shifting for full -12 to +12 range
         [gridPitchSlider, lyricsPitchSlider].forEach(slider => {
             if (slider) {
                 slider.addEventListener('input', (e) => {
-                    const pitch = parseInt(e.target.value);
+                    const semitones = parseInt(e.target.value);
                     if (window.simplePitchTempo) {
-                        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                        const originalIdx = noteNames.indexOf(window.simplePitchTempo.originalKey);
-                        const newIdx = (originalIdx + pitch + 12) % 12;
-                        window.simplePitchTempo.setKey(noteNames[newIdx]);
+                        window.simplePitchTempo.setPitchShift(semitones);
                     }
+                    // Update pitch value display immediately
                     this.syncPopupControlsState();
                 });
             }
@@ -2273,9 +2271,12 @@ class ChordDisplay {
                 const topMargin = 10; // 10px from top
                 const targetScroll = Math.max(0, relativeTop - topMargin);
 
+                // Skip scroll if already at target position
+                if (Math.abs(popupBody.scrollTop - targetScroll) < 1) return;
+
                 popupBody.scrollTo({
                     top: targetScroll,
-                    behavior: 'smooth'
+                    behavior: 'auto'
                 });
             }
         }

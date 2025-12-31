@@ -94,6 +94,17 @@ class KaraokeDisplay {
 
             console.log(`[KaraokeDisplay] Tempo change → lyricsRatio=${this.tempoRatio.toFixed(3)}x, playbackRate=${this.playbackRate.toFixed(3)}, soundTouch=${this.soundTouchTempo.toFixed(3)} (${this.tempoMode}), absoluteTime=${this.absoluteTime}`);
         });
+
+        // Listen for pitch changes to update chord transpositions in lyrics
+        window.addEventListener('pitchShiftChanged', (event) => {
+            const detail = event.detail || {};
+            const pitchShift = detail.pitchShift ?? 0;
+
+            console.log(`[KaraokeDisplay] Pitch shift changed → ${pitchShift >= 0 ? '+' : ''}${pitchShift} semitones`);
+
+            // Update chord transpositions in the lyrics display
+            this.updateChordTransposition(pitchShift);
+        });
     }
 
     /**
@@ -622,18 +633,23 @@ class KaraokeDisplay {
         const isPopup = Boolean(popupContent);
         const scrollContainer = isPopup ? popupContent : this.lyricsContainer;
 
-        const containerHeight = scrollContainer.clientHeight || 1;
-        const targetRatio = isPopup ? 0.25 : 0.65; // popup: line at 25% from top for anticipation
-        const targetOffset = containerHeight * targetRatio;
+        const containerHeight = scrollContainer.clientHeight;
 
-        // Calculate line position relative to the scroll container
+        // Validate container is laid out
+        if (containerHeight < 50) {
+            setTimeout(() => this.scrollToLine(line, immediate), 100);
+            return;
+        }
+
+        // Popup: position at 15% from top, Main: position at 65% from top
+        const topMargin = isPopup ? (containerHeight * 0.15) : (containerHeight * 0.65);
+
+        // Use getBoundingClientRect for accurate cross-container positioning
         const lineRect = line.getBoundingClientRect();
         const containerRect = scrollContainer.getBoundingClientRect();
-        const lineTop = line.offsetTop;
-        const lineHeight = line.offsetHeight;
-        const lineCenter = lineTop + (lineHeight / 2);
+        const lineTopInContainer = lineRect.top - containerRect.top + scrollContainer.scrollTop;
 
-        let targetTop = lineCenter - targetOffset;
+        let targetTop = lineTopInContainer - topMargin;
         const maxScroll = Math.max(0, scrollContainer.scrollHeight - containerHeight);
         targetTop = Math.max(0, Math.min(targetTop, maxScroll));
 

@@ -27,6 +27,8 @@ class LyricsPopup {
         }
 
         if (this.slider) {
+            this.sizeValueDisplay = document.getElementById('lyrics-popup-size-value');
+
             const refocus = () => {
                 if (window.karaokeDisplayInstance) {
                     window.karaokeDisplayInstance.refocusCurrentLine(true);
@@ -34,7 +36,9 @@ class LyricsPopup {
             };
 
             this.slider.addEventListener('input', (event) => {
-                this.applyScale(parseFloat(event.target.value));
+                const value = parseFloat(event.target.value);
+                this.applyScale(value);
+                this.updateSizeDisplay(value);
             });
 
             this.slider.addEventListener('change', refocus);
@@ -56,7 +60,18 @@ class LyricsPopup {
     }
 
     open() {
-        if (this.isOpen || !this.popupLyricsSlot || !this.originalLyricsElement) {
+        if (this.isOpen || !this.popupLyricsSlot) {
+            return;
+        }
+
+        // Refresh reference to lyrics element (may have been created after page load)
+        if (!this.originalLyricsElement) {
+            this.originalLyricsElement = document.querySelector('#karaoke-container-lyrics .karaoke-lyrics');
+            this.originalParent = this.originalLyricsElement ? this.originalLyricsElement.parentElement : null;
+        }
+
+        if (!this.originalLyricsElement) {
+            console.warn('[LyricsPopup] No lyrics element found');
             return;
         }
 
@@ -100,9 +115,16 @@ class LyricsPopup {
         this.popup.classList.remove('active');
         document.body.classList.remove('lyrics-popup-open');
         this.isOpen = false;
-        this.applyScale(1);
+
+        // Reset transform when closing
+        if (this.originalLyricsElement) {
+            this.originalLyricsElement.style.removeProperty('transform');
+            this.originalLyricsElement.style.removeProperty('transform-origin');
+        }
+
         if (this.slider) {
             this.slider.value = '1';
+            this.updateSizeDisplay(1);
         }
 
         if (window.karaokeDisplayInstance) {
@@ -111,12 +133,21 @@ class LyricsPopup {
     }
 
     applyScale(scaleValue) {
-        if (!this.originalLyricsElement) {
+        // Get the lyrics element fresh in case it was created after page load
+        const lyricsElement = this.originalLyricsElement || document.querySelector('#karaoke-container-lyrics .karaoke-lyrics');
+        if (!lyricsElement) {
             return;
         }
         const clamped = Math.min(1.6, Math.max(0.8, scaleValue || 1));
-        this.originalLyricsElement.style.fontSize = `${clamped}rem`;
-        this.originalLyricsElement.style.lineHeight = `${clamped * 1.4}rem`;
+        // Use transform scale to affect all child elements uniformly
+        lyricsElement.style.setProperty('transform', `scale(${clamped})`, 'important');
+        lyricsElement.style.setProperty('transform-origin', 'top left', 'important');
+    }
+
+    updateSizeDisplay(value) {
+        if (this.sizeValueDisplay) {
+            this.sizeValueDisplay.textContent = value.toFixed(1) + 'x';
+        }
     }
 }
 
