@@ -100,8 +100,8 @@ class MobileApp {
         this.lyricsUserScrolling = false;
         this.lyricsScrollResumeTimer = null;
         this.lyricsScrollHandlers = null;
-        this.lyricsPopupOpen = false;
-        this.popupLyricElements = [];
+        this.fullscreenLyricsOpen = false;
+        this.fullscreenLyricElements = [];
         this.playheadIndicator = null;
         this.myLibraryVideoIds = new Set(); // Track user's library video IDs
         this.libraryRefreshTimer = null;
@@ -1912,29 +1912,29 @@ class MobileApp {
         const lyrics = document.getElementById('mobileGenerateLyrics');
         if (lyrics) lyrics.addEventListener('click', () => this.generateLyrics());
 
-        // Focus Lyrics popup
-        const focusLyricsBtn = document.getElementById('mobileFocusLyrics');
-        if (focusLyricsBtn) focusLyricsBtn.addEventListener('click', () => this.openLyricsPopup());
+        // Fullscreen Lyrics popup
+        const fullscreenLyricsBtn = document.getElementById('mobileFullScreenLyrics');
+        if (fullscreenLyricsBtn) fullscreenLyricsBtn.addEventListener('click', () => this.openFullscreenLyrics());
 
-        const closeLyricsPopupBtn = document.getElementById('mobile-lyrics-popup-close');
-        if (closeLyricsPopupBtn) closeLyricsPopupBtn.addEventListener('click', () => this.closeLyricsPopup());
+        const closeFullscreenLyricsBtn = document.getElementById('fullscreen-lyrics-popup-close');
+        if (closeFullscreenLyricsBtn) closeFullscreenLyricsBtn.addEventListener('click', () => this.closeFullscreenLyrics());
 
-        // Close lyrics popup on overlay click
-        const lyricsPopup = document.getElementById('mobile-lyrics-popup');
-        if (lyricsPopup) {
-            lyricsPopup.addEventListener('click', (e) => {
-                if (e.target === lyricsPopup) this.closeLyricsPopup();
+        // Close fullscreen lyrics popup on overlay click
+        const fullscreenLyricsPopup = document.getElementById('fullscreen-lyrics-popup');
+        if (fullscreenLyricsPopup) {
+            fullscreenLyricsPopup.addEventListener('click', (e) => {
+                if (e.target === fullscreenLyricsPopup) this.closeFullscreenLyrics();
             });
         }
 
-        // Lyrics popup text size slider
-        const lyricsSizeSlider = document.getElementById('mobile-lyrics-popup-size-slider');
-        if (lyricsSizeSlider) {
-            lyricsSizeSlider.addEventListener('input', (e) => this.applyLyricsPopupScale(parseFloat(e.target.value)));
+        // Fullscreen lyrics size slider
+        const fullscreenSizeSlider = document.getElementById('fullscreenLyricsSizeSlider');
+        if (fullscreenSizeSlider) {
+            fullscreenSizeSlider.addEventListener('input', (e) => this.applyFullscreenLyricsScale(parseFloat(e.target.value)));
         }
 
-        // Setup lyrics popup controls
-        this.initLyricsPopupControls();
+        // Setup fullscreen lyrics controls
+        this.initFullscreenLyricsControls();
 
         const regenerateChordsBtn = document.getElementById('mobileRegenerateChords');
         if (regenerateChordsBtn) regenerateChordsBtn.addEventListener('click', () => this.regenerateChords());
@@ -2078,8 +2078,18 @@ class MobileApp {
 
         this.isPlaying = true;
         this.updatePlayPauseButtons();
+        this.syncPopupControlsState();
 
         this.startPlaybackAnimation();
+
+        // Initial scroll to current lyric position on playback start
+        if (this.activeLyricIndex >= 0) {
+            this.scrollLyricsToIndex(this.activeLyricIndex, true);
+        }
+        // Also scroll fullscreen popup if open
+        if (this.fullscreenLyricsOpen && this.activeLyricIndex >= 0) {
+            this.scrollToFullscreenLyric(this.activeLyricIndex, true);
+        }
 
         if (this.wakeLockSupported) {
             this.requestWakeLock().catch(error => {
@@ -2133,6 +2143,7 @@ class MobileApp {
 
         this.isPlaying = false;
         this.updatePlayPauseButtons();
+        this.syncPopupControlsState();
 
         this.stopPlaybackAnimation();
         this.releaseWakeLock();
@@ -4017,8 +4028,8 @@ class MobileApp {
 
         this.highlightLyricWords(segmentIndex, currentTime);
 
-        // Update lyrics popup if open
-        this.updateLyricsPopup();
+        // Update fullscreen lyrics if open
+        this.updateFullscreenLyrics();
     }
 
     findCurrentLyricIndex(currentTime) {
@@ -4677,16 +4688,15 @@ class MobileApp {
     }
 
     // ============================================
-    // LYRICS FOCUS POPUP
+    // FULLSCREEN LYRICS POPUP
     // ============================================
 
-    openLyricsPopup() {
-        const popup = document.getElementById('mobile-lyrics-popup');
-        const popupContent = document.getElementById('mobile-lyrics-popup-content');
-        const sourceLyrics = document.getElementById('mobileLyricsDisplay');
+    openFullscreenLyrics() {
+        const popup = document.getElementById('fullscreen-lyrics-popup');
+        const content = document.getElementById('fullscreen-lyrics-content');
 
-        if (!popup || !popupContent || !sourceLyrics) {
-            console.warn('[LyricsPopup] Missing popup elements');
+        if (!popup || !content) {
+            console.warn('[FullscreenLyrics] Missing popup elements');
             return;
         }
 
@@ -4695,146 +4705,279 @@ class MobileApp {
             return;
         }
 
-        // Clone the lyrics content to the popup
-        popupContent.innerHTML = sourceLyrics.innerHTML;
-
-        // Store reference to popup lyrics elements
-        this.popupLyricElements = Array.from(popupContent.querySelectorAll('.mobile-lyrics-line'));
-
-        // Apply current active state
-        if (this.activeLyricIndex >= 0) {
-            this.applyLyricLineStatesInPopup(this.activeLyricIndex);
-            this.scrollToLyricInPopup(this.activeLyricIndex, true);
-        }
+        // Render lyrics fresh (not clone) with own element structure
+        this.renderFullscreenLyrics(content);
 
         // Open popup
         popup.classList.add('active');
         popup.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
-        this.lyricsPopupOpen = true;
+        this.fullscreenLyricsOpen = true;
+
+        // Apply current state
+        if (this.activeLyricIndex >= 0) {
+            this.applyFullscreenLyricStates(this.activeLyricIndex);
+            this.scrollToFullscreenLyric(this.activeLyricIndex, true);
+        }
 
         // Sync controls state
         this.syncPopupControlsState();
+        console.log('[FullscreenLyrics] Opened with', this.lyrics.length, 'lines');
     }
 
-    closeLyricsPopup() {
-        const popup = document.getElementById('mobile-lyrics-popup');
+    closeFullscreenLyrics() {
+        const popup = document.getElementById('fullscreen-lyrics-popup');
         if (!popup) return;
 
         popup.classList.remove('active');
         popup.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
-        this.lyricsPopupOpen = false;
-        this.popupLyricElements = [];
+        this.fullscreenLyricsOpen = false;
+        this.fullscreenLyricElements = [];
 
-        // Reset text size slider
-        const sizeSlider = document.getElementById('mobile-lyrics-popup-size-slider');
+        // Reset size slider
+        const sizeSlider = document.getElementById('fullscreenLyricsSizeSlider');
         if (sizeSlider) sizeSlider.value = '1';
-    }
 
-    applyLyricsPopupScale(scale) {
-        const popupContent = document.getElementById('mobile-lyrics-popup-content');
-        if (!popupContent) return;
-
-        const clamped = Math.min(1.6, Math.max(0.8, scale || 1));
-        popupContent.style.fontSize = `${clamped}rem`;
-        popupContent.style.lineHeight = `${clamped * 1.6}rem`;
-
-        // Refocus on active line after scale change
-        if (this.activeLyricIndex >= 0) {
-            setTimeout(() => this.scrollToLyricInPopup(this.activeLyricIndex, true), 100);
+        // Reset content transform
+        const content = document.getElementById('fullscreen-lyrics-content');
+        if (content) {
+            content.style.removeProperty('transform');
+            content.style.removeProperty('transform-origin');
         }
+
+        console.log('[FullscreenLyrics] Closed');
     }
 
-    applyLyricLineStatesInPopup(activeIndex) {
-        if (!this.popupLyricElements || this.popupLyricElements.length === 0) return;
+    renderFullscreenLyrics(container) {
+        container.innerHTML = '';
+        this.fullscreenLyricElements = [];
 
-        this.popupLyricElements.forEach((line, i) => {
-            line.classList.remove('active', 'past', 'future');
+        // Build chord lookup for display
+        const chordLookup = this.buildChordLookupForLyrics();
+
+        this.lyrics.forEach((segment, index) => {
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'fs-lyrics-line';
+            lineDiv.dataset.index = index;
+            lineDiv.dataset.start = segment.start || 0;
+            lineDiv.dataset.end = segment.end || 0;
+
+            // Text container
+            const textContainer = document.createElement('div');
+            textContainer.className = 'fs-lyrics-text';
+
+            if (segment.words && segment.words.length > 0) {
+                segment.words.forEach((wordData, wordIndex) => {
+                    const wordWrapper = document.createElement('span');
+                    wordWrapper.className = 'fs-lyrics-word-wrapper';
+
+                    // Check for chord at this word
+                    const chordInfo = this.findChordAtTime(wordData.start, chordLookup);
+                    if (chordInfo && chordInfo.isChange) {
+                        const chordLabel = document.createElement('span');
+                        chordLabel.className = 'fs-lyrics-chord';
+                        chordLabel.dataset.originalChord = chordInfo.chord;
+                        chordLabel.textContent = this.transposeChord(chordInfo.chord, this.currentPitchShift);
+                        wordWrapper.appendChild(chordLabel);
+                    }
+
+                    const wordSpan = document.createElement('span');
+                    wordSpan.className = 'fs-lyrics-word';
+                    wordSpan.dataset.wordIndex = wordIndex;
+                    wordSpan.dataset.start = wordData.start || 0;
+                    wordSpan.dataset.end = wordData.end || 0;
+                    wordSpan.textContent = wordData.word;
+
+                    wordWrapper.appendChild(wordSpan);
+                    textContainer.appendChild(wordWrapper);
+                });
+            } else {
+                // Fallback for segments without word timing
+                const textSpan = document.createElement('span');
+                textSpan.className = 'fs-lyrics-word';
+                textSpan.textContent = segment.text || '';
+                textContainer.appendChild(textSpan);
+            }
+
+            lineDiv.appendChild(textContainer);
+
+            // Click to seek
+            lineDiv.addEventListener('click', () => {
+                this.seek(segment.start || 0);
+            });
+
+            container.appendChild(lineDiv);
+        });
+
+        this.fullscreenLyricElements = Array.from(container.querySelectorAll('.fs-lyrics-line'));
+    }
+
+    applyFullscreenLyricStates(activeIndex) {
+        if (!this.fullscreenLyricElements || this.fullscreenLyricElements.length === 0) return;
+
+        const pastPreview = 2;
+        const futurePreview = 3;
+
+        this.fullscreenLyricElements.forEach((line, i) => {
+            line.classList.remove('active', 'past', 'recent-past', 'hidden-past', 'future', 'up-next', 'hidden-future');
+
             if (i === activeIndex) {
                 line.classList.add('active');
             } else if (i < activeIndex) {
+                if (i >= activeIndex - pastPreview) {
+                    line.classList.add('recent-past');
+                } else {
+                    line.classList.add('hidden-past');
+                }
                 line.classList.add('past');
             } else {
+                if (i <= activeIndex + futurePreview) {
+                    line.classList.add('up-next');
+                } else {
+                    line.classList.add('hidden-future');
+                }
                 line.classList.add('future');
             }
         });
     }
 
-    scrollToLyricInPopup(index, immediate = false) {
-        if (!this.popupLyricElements || index < 0 || index >= this.popupLyricElements.length) return;
+    scrollToFullscreenLyric(index, immediate = false) {
+        if (!this.fullscreenLyricElements || index < 0 || index >= this.fullscreenLyricElements.length) return;
 
-        const popupContent = document.getElementById('mobile-lyrics-popup-content');
-        const line = this.popupLyricElements[index];
-        if (!popupContent || !line) return;
+        const content = document.getElementById('fullscreen-lyrics-content');
+        const line = this.fullscreenLyricElements[index];
+        if (!content || !line) return;
 
-        const containerHeight = popupContent.clientHeight || 1;
-        const targetRatio = 0.25; // Line at 25% from top for anticipation
-        const targetOffset = containerHeight * targetRatio;
+        const containerHeight = content.clientHeight;
 
-        const lineTop = line.offsetTop;
-        const lineHeight = line.offsetHeight;
-        const lineCenter = lineTop + (lineHeight / 2);
+        // Validate container is laid out
+        if (containerHeight < 50) {
+            setTimeout(() => this.scrollToFullscreenLyric(index, immediate), 100);
+            return;
+        }
 
-        let targetTop = lineCenter - targetOffset;
-        const maxScroll = Math.max(0, popupContent.scrollHeight - containerHeight);
+        // Position line at 25% from top (like desktop but with more margin for mobile controls)
+        const topMargin = containerHeight * 0.25;
+
+        // Use getBoundingClientRect for accurate positioning (like desktop)
+        const lineRect = line.getBoundingClientRect();
+        const containerRect = content.getBoundingClientRect();
+        const lineTopInContainer = lineRect.top - containerRect.top + content.scrollTop;
+
+        let targetTop = lineTopInContainer - topMargin;
+        const maxScroll = Math.max(0, content.scrollHeight - containerHeight);
         targetTop = Math.max(0, Math.min(targetTop, maxScroll));
 
         if (immediate) {
-            popupContent.scrollTop = targetTop;
-        } else {
-            popupContent.scrollTo({ top: targetTop, behavior: 'smooth' });
+            content.scrollTop = targetTop;
+            return;
         }
+
+        if (Math.abs(content.scrollTop - targetTop) < 1) return;
+
+        content.scrollTo({ top: targetTop, behavior: 'smooth' });
     }
 
-    updateLyricsPopup() {
-        if (!this.lyricsPopupOpen || !this.popupLyricElements || this.popupLyricElements.length === 0) return;
+    highlightFullscreenWords(segmentIndex, currentTime) {
+        if (!this.fullscreenLyricElements || segmentIndex < 0 || segmentIndex >= this.fullscreenLyricElements.length) return;
 
-        // Sync line states with main lyrics
-        this.applyLyricLineStatesInPopup(this.activeLyricIndex);
+        const line = this.fullscreenLyricElements[segmentIndex];
+        if (!line) return;
 
-        // Sync word-level highlighting
-        if (this.activeLyricIndex >= 0 && this.activeLyricIndex < this.popupLyricElements.length) {
-            const sourceLine = this.lyricLineElements?.[this.activeLyricIndex];
-            const popupLine = this.popupLyricElements[this.activeLyricIndex];
+        const wordSpans = line.querySelectorAll('.fs-lyrics-word');
 
-            if (sourceLine && popupLine) {
-                const sourceWords = sourceLine.querySelectorAll('.mobile-lyrics-word');
-                const popupWords = popupLine.querySelectorAll('.mobile-lyrics-word');
+        wordSpans.forEach((wordSpan) => {
+            const wordStart = parseFloat(wordSpan.dataset.start);
+            const wordEnd = parseFloat(wordSpan.dataset.end);
 
-                sourceWords.forEach((srcWord, i) => {
-                    const popupWord = popupWords[i];
-                    if (popupWord) {
-                        // Copy classes
-                        popupWord.className = srcWord.className;
-                        // Copy inline styles for gradient fill
-                        popupWord.style.cssText = srcWord.style.cssText;
-                    }
-                });
+            // Clear previous states
+            wordSpan.classList.remove('word-future', 'word-current', 'word-past');
+            wordSpan.style.background = '';
+            wordSpan.style.webkitBackgroundClip = '';
+            wordSpan.style.backgroundClip = '';
+            wordSpan.style.webkitTextFillColor = '';
+
+            if (isNaN(wordStart) || isNaN(wordEnd)) return;
+
+            if (currentTime < wordStart) {
+                // Future word
+                wordSpan.classList.add('word-future');
+            } else if (currentTime >= wordStart && currentTime <= wordEnd) {
+                // Current word - gradient fill effect (like desktop)
+                wordSpan.classList.add('word-current');
+                const duration = wordEnd - wordStart;
+                if (duration > 0) {
+                    const progress = (currentTime - wordStart) / duration;
+                    const fillPercent = Math.min(100, Math.max(0, progress * 100));
+                    wordSpan.style.background = `linear-gradient(to right, var(--mobile-primary) ${fillPercent}%, rgba(255, 255, 255, 0.6) ${fillPercent}%)`;
+                    wordSpan.style.webkitBackgroundClip = 'text';
+                    wordSpan.style.backgroundClip = 'text';
+                    wordSpan.style.webkitTextFillColor = 'transparent';
+                }
+            } else {
+                // Past word - fully highlighted
+                wordSpan.classList.add('word-past');
+                wordSpan.style.background = 'var(--mobile-primary)';
+                wordSpan.style.webkitBackgroundClip = 'text';
+                wordSpan.style.backgroundClip = 'text';
+                wordSpan.style.webkitTextFillColor = 'transparent';
             }
+        });
+    }
+
+    updateFullscreenLyrics() {
+        if (!this.fullscreenLyricsOpen || !this.fullscreenLyricElements || this.fullscreenLyricElements.length === 0) return;
+
+        // Update line states
+        this.applyFullscreenLyricStates(this.activeLyricIndex);
+
+        // Highlight words in current line
+        if (this.activeLyricIndex >= 0) {
+            this.highlightFullscreenWords(this.activeLyricIndex, this.currentTime);
         }
 
         // Scroll to active line
-        this.scrollToLyricInPopup(this.activeLyricIndex);
+        this.scrollToFullscreenLyric(this.activeLyricIndex);
     }
 
-    initLyricsPopupControls() {
-        // Lyrics popup controls
-        const lyricsPlayBtn = document.getElementById('mobileLyricsPopupPlayBtn');
-        const lyricsStopBtn = document.getElementById('mobileLyricsPopupStopBtn');
-        const lyricsTempoSlider = document.getElementById('mobileLyricsPopupTempoSlider');
-        const lyricsPitchSlider = document.getElementById('mobileLyricsPopupPitchSlider');
+    applyFullscreenLyricsScale(scale) {
+        const content = document.getElementById('fullscreen-lyrics-content');
+        if (!content) return;
 
-        if (lyricsPlayBtn) {
-            lyricsPlayBtn.addEventListener('click', () => this.togglePlayback());
+        const clamped = Math.min(1.6, Math.max(0.8, scale || 1));
+
+        content.style.setProperty('transform', `scale(${clamped})`, 'important');
+        content.style.setProperty('transform-origin', 'top left', 'important');
+
+        // Update size display
+        const sizeValue = document.getElementById('fullscreenLyricsSizeValue');
+        if (sizeValue) {
+            sizeValue.textContent = clamped.toFixed(1) + 'x';
         }
 
-        if (lyricsStopBtn) {
-            lyricsStopBtn.addEventListener('click', () => this.stop());
+        // Refocus on active line
+        if (this.activeLyricIndex >= 0) {
+            setTimeout(() => this.scrollToFullscreenLyric(this.activeLyricIndex, true), 100);
+        }
+    }
+
+    initFullscreenLyricsControls() {
+        const playBtn = document.getElementById('fullscreenLyricsPlayBtn');
+        const stopBtn = document.getElementById('fullscreenLyricsStopBtn');
+        const tempoSlider = document.getElementById('fullscreenLyricsTempoSlider');
+        const pitchSlider = document.getElementById('fullscreenLyricsPitchSlider');
+
+        if (playBtn) {
+            playBtn.addEventListener('click', () => this.togglePlayback());
         }
 
-        if (lyricsTempoSlider) {
-            lyricsTempoSlider.addEventListener('input', (e) => {
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stop());
+        }
+
+        if (tempoSlider) {
+            tempoSlider.addEventListener('input', (e) => {
                 const ratio = parseFloat(e.target.value);
                 const newBPM = Math.round(this.originalBPM * ratio);
                 this.setTempo(newBPM);
@@ -4842,8 +4985,8 @@ class MobileApp {
             });
         }
 
-        if (lyricsPitchSlider) {
-            lyricsPitchSlider.addEventListener('input', (e) => {
+        if (pitchSlider) {
+            pitchSlider.addEventListener('input', (e) => {
                 const pitch = parseInt(e.target.value);
                 this.syncPitchValue(pitch);
                 this.setPitch(pitch);

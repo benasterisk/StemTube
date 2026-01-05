@@ -264,9 +264,9 @@
                             <i class="fas fa-magic"></i>
                             <span>Generate Lyrics</span>
                         </button>
-                        <button id="mobileFocusLyrics" class="mobile-btn mobile-btn-primary">
-                            <i class="fas fa-expand"></i>
-                            <span>Focus Lyrics</span>
+                        <button id="mobileFullScreenLyrics" class="mobile-btn mobile-btn-primary">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                            <span>Full Screen</span>
                         </button>
                     </div>
                 </div>
@@ -322,49 +322,52 @@
         </div>
     </div>
 
-    <!-- Mobile Lyrics Focus Popup -->
-    <div class="lyrics-popup-overlay" id="mobile-lyrics-popup" aria-hidden="true">
-        <div class="lyrics-popup-dialog">
-            <div class="lyrics-popup-header">
-                <h3>Lyrics Focus</h3>
-                <button class="lyrics-popup-close" id="mobile-lyrics-popup-close">
+    <!-- Full Screen Lyrics Popup -->
+    <div class="fullscreen-lyrics-overlay" id="fullscreen-lyrics-popup" aria-hidden="true">
+        <div class="fullscreen-lyrics-dialog">
+            <div class="fullscreen-lyrics-header">
+                <h3>Full Screen Lyrics</h3>
+                <button class="fullscreen-lyrics-close" id="fullscreen-lyrics-popup-close">
                     <i class="fas fa-times"></i>
                     <span>Close</span>
                 </button>
             </div>
-            <!-- Control bar for Lyrics Focus -->
-            <div class="popup-controls-bar">
-                <div class="popup-playback-controls">
-                    <button id="mobileLyricsPopupPlayBtn" class="popup-control-btn popup-play-sync">
+            <!-- Control bar -->
+            <div class="fullscreen-controls-bar">
+                <div class="fullscreen-playback-controls">
+                    <button id="fullscreenLyricsPlayBtn" class="fullscreen-control-btn popup-play-sync">
                         <i class="fas fa-play"></i>
                     </button>
-                    <button id="mobileLyricsPopupStopBtn" class="popup-control-btn popup-stop-sync">
+                    <button id="fullscreenLyricsStopBtn" class="fullscreen-control-btn popup-stop-sync">
                         <i class="fas fa-stop"></i>
                     </button>
-                    <div class="popup-time-display">
-                        <span id="mobileLyricsPopupCurrentTime" class="popup-time-sync">0:00</span> / <span id="mobileLyricsPopupDuration" class="popup-duration-sync">0:00</span>
+                    <div class="fullscreen-time-display">
+                        <span id="fullscreenLyricsCurrentTime" class="popup-time-sync">0:00</span>
+                        <span class="fullscreen-time-separator">/</span>
+                        <span id="fullscreenLyricsDuration" class="popup-duration-sync">0:00</span>
                     </div>
                 </div>
-                <div class="popup-sliders">
-                    <div class="popup-slider-group">
-                        <span class="popup-slider-label">Tempo</span>
-                        <input type="range" id="mobileLyricsPopupTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="popup-slider popup-tempo-sync">
-                        <span id="mobileLyricsPopupTempoValue" class="popup-slider-value popup-tempo-value-sync">1.0x</span>
+                <div class="fullscreen-sliders">
+                    <div class="fullscreen-slider-group">
+                        <span class="fullscreen-slider-label">Tempo</span>
+                        <input type="range" id="fullscreenLyricsTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="fullscreen-slider popup-tempo-sync">
+                        <span id="fullscreenLyricsTempoValue" class="fullscreen-slider-value popup-tempo-value-sync">1.0x</span>
                     </div>
-                    <div class="popup-slider-group">
-                        <span class="popup-slider-label">Pitch</span>
-                        <input type="range" id="mobileLyricsPopupPitchSlider" min="-12" max="12" value="0" step="1" class="popup-slider popup-pitch-sync">
-                        <span id="mobileLyricsPopupPitchValue" class="popup-slider-value popup-pitch-value-sync">0</span>
+                    <div class="fullscreen-slider-group">
+                        <span class="fullscreen-slider-label">Pitch</span>
+                        <input type="range" id="fullscreenLyricsPitchSlider" min="-12" max="12" value="0" step="1" class="fullscreen-slider popup-pitch-sync">
+                        <span id="fullscreenLyricsPitchValue" class="fullscreen-slider-value popup-pitch-value-sync">0</span>
+                    </div>
+                    <div class="fullscreen-slider-group">
+                        <span class="fullscreen-slider-label">Size</span>
+                        <input type="range" id="fullscreenLyricsSizeSlider" min="0.8" max="1.6" step="0.05" value="1" class="fullscreen-slider">
+                        <span id="fullscreenLyricsSizeValue" class="fullscreen-slider-value">1.0x</span>
                     </div>
                 </div>
             </div>
-            <div class="lyrics-popup-body">
-                <div class="lyrics-popup-slider">
-                    <label for="mobile-lyrics-popup-size-slider">Text Size</label>
-                    <input type="range" id="mobile-lyrics-popup-size-slider" min="0.8" max="1.6" step="0.05" value="1">
-                </div>
-                <div class="lyrics-popup-content" id="mobile-lyrics-popup-content">
-                    <!-- Mobile lyrics will be cloned here -->
+            <div class="fullscreen-lyrics-body">
+                <div class="fullscreen-lyrics-content" id="fullscreen-lyrics-content">
+                    <!-- Lyrics will be rendered here -->
                 </div>
             </div>
         </div>
