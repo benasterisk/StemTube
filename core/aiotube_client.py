@@ -10,7 +10,10 @@ import threading
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
-import aiotube
+# aiotube is deprecated/broken - using yt-dlp instead
+# import aiotube
+# pytubefix is also blocked by YouTube bot detection, so we use yt-dlp
+import yt_dlp
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -114,79 +117,68 @@ class AiotubeClient:
                 return json.loads(response_str)
 
         try:
-            # Use aiotube to search for videos
-            print(f"[AiotubeClient] Searching for '{query}' with limit={max_results}")
-            
-            # Try to get more results by using a higher limit than requested
-            # since aiotube might have internal limitations
-            search_limit = max(max_results, 20)  # Always try to get at least 20 results
-            search_results = aiotube.Search.videos(query, limit=search_limit)
-            print(f"[AiotubeClient] Aiotube returned {len(search_results)} results")
-            
-            # Take only the requested number of results
-            if len(search_results) > max_results:
-                search_results = search_results[:max_results]
-                print(f"[AiotubeClient] Trimmed to {len(search_results)} results as requested")
-            
+            # Use yt-dlp to search for videos (aiotube and pytubefix are blocked by YouTube)
+            print(f"[YtDlpClient] Searching for '{query}' with limit={max_results}")
+
+            # Use yt-dlp search
+            ydl_opts = {
+                'quiet': True,
+                'extract_flat': True,
+                'no_warnings': True,
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_results = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
+
+            entries = search_results.get('entries', [])
+            print(f"[YtDlpClient] yt-dlp returned {len(entries)} results")
+
             # Create a response structure similar to YouTube API
             response = {
                 "items": [],
                 "pageInfo": {
-                    "totalResults": len(search_results),
-                    "resultsPerPage": len(search_results)
+                    "totalResults": len(entries),
+                    "resultsPerPage": len(entries)
                 }
             }
-            
-            # Add video details for each result
-            for video_id in search_results:
-                try:
-                    # DEBUG: Log each video_id from search results
-                    print(f"[AIOTUBE DEBUG] Processing video_id: '{video_id}' (length: {len(video_id)})")
-                    
-                    video = aiotube.Video(video_id)
-                    metadata = video.metadata
-                    
-                    # Extract thumbnail URL correctly
-                    thumbnail_url = ""
-                    if "thumbnails" in metadata and metadata["thumbnails"] and len(metadata["thumbnails"]) > 0:
-                        # Get the best quality thumbnail but not too large
-                        best_thumbnail = None
-                        best_width = 0
 
-                        # Browse all thumbnails to find one with optimal width (approximately 336px)
-                        for thumbnail in metadata["thumbnails"]:
-                            if "url" in thumbnail and thumbnail["url"] and "width" in thumbnail:
-                                width = thumbnail["width"]
-                                # Prefer thumbnails between 200 and 400px wide
-                                if 200 <= width <= 400 and width > best_width:
-                                    best_thumbnail = thumbnail
-                                    best_width = width
-                        
-                        # If no optimal thumbnail was found, take the last one (usually the largest)
-                        if best_thumbnail:
-                            thumbnail_url = best_thumbnail.get("url", "")
-                        elif len(metadata["thumbnails"]) > 0:
-                            # Take the last thumbnail (usually the largest)
-                            thumbnail_url = metadata["thumbnails"][-1].get("url", "")
-                    
+            # Add video details for each result
+            for entry in entries:
+                try:
+                    video_id = entry.get('id', '')  # 11-char YouTube ID
+
+                    # DEBUG: Log each video_id from search results
+                    print(f"[YTDLP DEBUG] Processing video_id: '{video_id}' (length: {len(video_id)})")
+
+                    # Extract thumbnail URL - yt-dlp provides thumbnails array
+                    thumbnail_url = ""
+                    thumbnails = entry.get('thumbnails', [])
+                    if thumbnails:
+                        # Get medium quality thumbnail
+                        thumbnail_url = thumbnails[0].get('url', '')
+                        for t in thumbnails:
+                            if t.get('width', 0) >= 320 and t.get('width', 0) <= 480:
+                                thumbnail_url = t.get('url', '')
+                                break
+                    if not thumbnail_url:
+                        thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+
                     # Clean up the thumbnail URL
-                    if thumbnail_url:
-                        # Remove query parameters that can cause problems
-                        if '?' in thumbnail_url:
-                            thumbnail_url = thumbnail_url.split('?')[0]
+                    if thumbnail_url and '?' in thumbnail_url:
+                        thumbnail_url = thumbnail_url.split('?')[0]
+
+                    title = entry.get('title', '')
 
                     # Debug: Show metadata to understand the structure
                     print(f"DEBUG - Video ID: {video_id}")
                     print(f"DEBUG - Thumbnail URL: {thumbnail_url}")
-                    print(f"DEBUG - Metadata keys: {metadata.keys()}")
-                    if "thumbnails" in metadata:
-                        print(f"DEBUG - Thumbnails: {metadata['thumbnails']}")
-                    
+                    print(f"DEBUG - Title: {title}")
+
                     # Extract duration correctly
                     duration = ""
-                    if "duration" in metadata and metadata["duration"]:
+                    total_seconds = int(entry.get('duration', 0) or 0)
+                    if total_seconds > 0:
                         # Convert seconds to detailed ISO 8601 format (with H, M, S as needed)
-                        total_seconds = int(metadata["duration"])
                         hours = total_seconds // 3600
                         minutes = (total_seconds % 3600) // 60
                         seconds = total_seconds % 60
@@ -197,17 +189,17 @@ class AiotubeClient:
                         if minutes > 0 or hours > 0:  # Include M even if 0 when there are hours
                             duration += f"{minutes}M"
                         duration += f"{seconds}S"
-                    
+
                     # DEBUG: Log the video_id being returned
-                    print(f"[AIOTUBE DEBUG] Returning video_id: '{video_id}' with title: '{metadata.get('title', '')[:50]}...'")
-                    
+                    print(f"[YTDLP DEBUG] Returning video_id: '{video_id}' with title: '{title[:50] if title else ''}...'")
+
                     # Create a structure similar to YouTube API response
                     item = {
                         "id": video_id,
                         "snippet": {
-                            "title": metadata.get("title", ""),
-                            "channelTitle": metadata.get("channel", {}).get("name", ""),
-                            "publishedAt": metadata.get("uploadDate", ""),
+                            "title": title,
+                            "channelTitle": entry.get('channel', '') or entry.get('uploader', ''),
+                            "publishedAt": entry.get('upload_date', '') or "",
                             "thumbnails": {
                                 "medium": {
                                     "url": thumbnail_url
@@ -218,14 +210,14 @@ class AiotubeClient:
                             "duration": duration
                         },
                         "statistics": {
-                            "viewCount": str(metadata.get("views", 0)),
-                            "likeCount": str(metadata.get("likes", 0))
+                            "viewCount": str(entry.get('view_count', 0) or 0),
+                            "likeCount": str(entry.get('like_count', 0) or 0)
                         }
                     }
-                    
+
                     response["items"].append(item)
                 except Exception as e:
-                    print(f"Error getting video details for {video_id}: {e}")
+                    print(f"Error getting video details: {e}")
                     continue
             
             # Cache results in SQLite
@@ -351,52 +343,46 @@ class AiotubeClient:
                     print(f"Error retrieving web information: {web_error}")
                     # Continue with basic information, without stopping the process
             else:
-                # Use aiotube for standard IDs
-                # Get video information using aiotube
-                video = aiotube.Video(video_id)
-                metadata = video.metadata
-                
-                # Extract thumbnail URL correctly
-                thumbnail_url = ""
-                if "thumbnails" in metadata and metadata["thumbnails"] and len(metadata["thumbnails"]) > 0:
-                    # Get the best quality thumbnail but not too large
-                    best_thumbnail = None
-                    best_width = 0
+                # Use yt-dlp for standard IDs (aiotube and pytubefix are blocked by YouTube)
+                url = f"https://www.youtube.com/watch?v={video_id}"
 
-                    # Browse all thumbnails to find one with optimal width (approximately 336px)
-                    for thumbnail in metadata["thumbnails"]:
-                        if "url" in thumbnail and thumbnail["url"] and "width" in thumbnail:
-                            width = thumbnail["width"]
-                            # Prefer thumbnails between 200 and 400px wide
-                            if 200 <= width <= 400 and width > best_width:
-                                best_thumbnail = thumbnail
-                                best_width = width
-                    
-                    # If no optimal thumbnail was found, take the last one (usually the largest)
-                    if best_thumbnail:
-                        thumbnail_url = best_thumbnail.get("url", "")
-                    elif len(metadata["thumbnails"]) > 0:
-                        # Take the last thumbnail (usually the largest)
-                        thumbnail_url = metadata["thumbnails"][-1].get("url", "")
-                
+                ydl_opts = {
+                    'quiet': True,
+                    'no_warnings': True,
+                    # YouTube bot detection bypass: Use Firefox cookies from server
+                    'cookiesfrombrowser': ('firefox',),
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+
+                # Extract thumbnail URL
+                thumbnail_url = f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+                thumbnails = info.get('thumbnails', [])
+                if thumbnails:
+                    for t in thumbnails:
+                        if t.get('width', 0) >= 320 and t.get('width', 0) <= 480:
+                            thumbnail_url = t.get('url', '')
+                            break
+                    if not thumbnail_url:
+                        thumbnail_url = thumbnails[-1].get('url', '') if thumbnails else f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+
                 # Clean up the thumbnail URL
-                if thumbnail_url:
-                    # Remove query parameters that can cause problems
-                    if '?' in thumbnail_url:
-                        thumbnail_url = thumbnail_url.split('?')[0]
+                if thumbnail_url and '?' in thumbnail_url:
+                    thumbnail_url = thumbnail_url.split('?')[0]
+
+                title = info.get('title', '')
 
                 # Debug: Show metadata to understand the structure
                 print(f"DEBUG - Video ID: {video_id}")
                 print(f"DEBUG - Thumbnail URL: {thumbnail_url}")
-                print(f"DEBUG - Metadata keys: {metadata.keys()}")
-                if "thumbnails" in metadata:
-                    print(f"DEBUG - Thumbnails: {metadata['thumbnails']}")
-                
+                print(f"DEBUG - Title: {title}")
+
                 # Extract duration correctly
                 duration = ""
-                if "duration" in metadata and metadata["duration"]:
+                total_seconds = int(info.get('duration', 0) or 0)
+                if total_seconds > 0:
                     # Convert seconds to detailed ISO 8601 format (with H, M, S as needed)
-                    total_seconds = int(metadata["duration"])
                     hours = total_seconds // 3600
                     minutes = (total_seconds % 3600) // 60
                     seconds = total_seconds % 60
@@ -407,7 +393,7 @@ class AiotubeClient:
                     if minutes > 0 or hours > 0:  # Include M even if 0 when there are hours
                         duration += f"{minutes}M"
                     duration += f"{seconds}S"
-                
+
                 # Create a structure similar to YouTube API response
                 response = {
                     "items": [{
@@ -415,10 +401,10 @@ class AiotubeClient:
                             "videoId": video_id  # Format compatible with frontend (item.id.videoId)
                         },
                         "snippet": {
-                            "title": metadata.get("title", ""),
-                            "description": metadata.get("description", ""),
-                            "channelTitle": metadata.get("channel", {}).get("name", ""),
-                            "publishedAt": metadata.get("uploadDate", ""),
+                            "title": title,
+                            "description": info.get('description', '') or "",
+                            "channelTitle": info.get('channel', '') or info.get('uploader', '') or "",
+                            "publishedAt": info.get('upload_date', '') or "",
                             "thumbnails": {
                                 "default": {"url": thumbnail_url},
                                 "medium": {"url": thumbnail_url},
@@ -429,8 +415,8 @@ class AiotubeClient:
                             "duration": duration
                         },
                         "statistics": {
-                            "viewCount": str(metadata.get("views", 0)),
-                            "likeCount": str(metadata.get("likes", 0))
+                            "viewCount": str(info.get('view_count', 0) or 0),
+                            "likeCount": str(info.get('like_count', 0) or 0)
                         }
                     }]
                 }
@@ -479,19 +465,27 @@ class AiotubeClient:
                 return json.loads(suggestions_str)
 
         try:
-            # Search for videos using the query
-            search_results = aiotube.Search.videos(query, limit=3)
-            
+            # Search for videos using yt-dlp (aiotube and pytubefix are blocked by YouTube)
+            ydl_opts = {
+                'quiet': True,
+                'extract_flat': True,
+                'no_warnings': True,
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_results = ydl.extract_info(f"ytsearch3:{query}", download=False)
+
+            entries = search_results.get('entries', [])
+
             # Extract titles as suggestions
             suggestions = []
-            for video_id in search_results:
+            for entry in entries:
                 try:
-                    video = aiotube.Video(video_id)
-                    title = video.metadata.get("title", "")
+                    title = entry.get('title', '') or ""
                     if title and title not in suggestions:
                         suggestions.append(title)
                 except Exception as e:
-                    print(f"Error getting video title for {video_id}: {e}")
+                    print(f"Error getting video title: {e}")
                     continue
             
             # Cache results in SQLite

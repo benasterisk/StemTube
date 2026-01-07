@@ -89,7 +89,7 @@ class BrowserLogger {
     installFetchInterceptor() {
         if (this.interceptorInstalled) return;
 
-        this.originalFetch = window.fetch;
+        this.originalFetch = window.fetch.bind(window);
         const self = this;
 
         window.fetch = async function(url, options = {}) {

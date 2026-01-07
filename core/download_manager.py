@@ -456,7 +456,9 @@ class DownloadManager:
                 'youtube': {
                     'player_client': ['default', '-tv_simply']
                 }
-            }
+            },
+            # YouTube bot detection bypass: Use Firefox cookies from server
+            'cookiesfrombrowser': ('firefox',),
         }
         
         # Add postprocessors for audio downloads
