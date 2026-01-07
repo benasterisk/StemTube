@@ -102,6 +102,10 @@ class MobileApp {
         this.lyricsScrollHandlers = null;
         this.fullscreenLyricsOpen = false;
         this.fullscreenLyricElements = [];
+        // Grid View 2 properties
+        this.gridView2Open = false;
+        this.gridView2Beats = [];
+        this.lastGridView2BeatIndex = -1;
         this.playheadIndicator = null;
         this.myLibraryVideoIds = new Set(); // Track user's library video IDs
         this.libraryRefreshTimer = null;
@@ -1735,18 +1739,18 @@ class MobileApp {
             console.log('[LoadMixer] Loaded', this.chords.length, 'chords');
             this.preloadChordDiagrams();
             this.displayChords();
-            this.initGridPopup();
+            this.initGridView2Popup();
         } else if (cacheKey && this.chordDataCache.has(cacheKey)) {
             this.chords = this.cloneChordArray(this.chordDataCache.get(cacheKey));
             console.log('[LoadMixer] Loaded chords from cache:', this.chords.length);
             this.preloadChordDiagrams();
             this.displayChords();
-            this.initGridPopup();
+            this.initGridView2Popup();
         } else {
             this.chords = [];
             console.log('[LoadMixer] No chords data');
             this.displayChords();
-            this.initGridPopup();
+            this.initGridView2Popup();
         }
 
         // Backend can return either 'lyrics' or 'lyrics_data'
@@ -2864,8 +2868,8 @@ class MobileApp {
             }
         }
 
-        // Sync grid view if open
-        this.syncGridView();
+        // Sync Grid View if open
+        this.syncGridView2();
     }
 
     getBeatIndexForTime(time) {
@@ -3793,7 +3797,7 @@ class MobileApp {
                 this.setChordCache(this.currentExtractionId, parsed);
             }
             this.displayChords();
-            this.initGridPopup();
+            this.initGridView2Popup();
             alert('Chords regenerated successfully!');
         } catch (error) {
             console.error('[Chords] Regeneration failed:', error);
@@ -4593,74 +4597,8 @@ class MobileApp {
         return div.innerHTML;
     }
 
-    // Chords Grid Popup Methods
-    initGridPopup() {
-        const openBtn = document.getElementById('mobileChordGridViewBtn');
-        const closeBtn = document.getElementById('chords-grid-popup-close');
-        const popup = document.getElementById('chords-grid-popup');
-
-        if (!openBtn || !closeBtn || !popup) return;
-
-        openBtn.addEventListener('click', () => this.openGridPopup());
-        closeBtn.addEventListener('click', () => this.closeGridPopup());
-
-        // Close on overlay click
-        popup.addEventListener('click', (e) => {
-            if (e.target === popup) this.closeGridPopup();
-        });
-
-        // Close on ESC key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && popup.getAttribute('aria-hidden') === 'false') {
-                this.closeGridPopup();
-            }
-        });
-
-        // Initialize popup controls
-        this.initPopupControls();
-    }
-
-    initPopupControls() {
-        // Grid popup controls
-        const gridPlayBtn = document.getElementById('gridPlayBtn');
-        const gridStopBtn = document.getElementById('gridStopBtn');
-        const gridTempoSlider = document.getElementById('gridTempoSlider');
-        const gridPitchSlider = document.getElementById('gridPitchSlider');
-
-        if (gridPlayBtn) {
-            gridPlayBtn.addEventListener('click', () => {
-                if (this.isPlaying) {
-                    this.pause();
-                } else {
-                    this.play();
-                }
-            });
-        }
-
-        if (gridStopBtn) {
-            gridStopBtn.addEventListener('click', () => this.stop());
-        }
-
-        if (gridTempoSlider) {
-            gridTempoSlider.addEventListener('input', (e) => {
-                const ratio = parseFloat(e.target.value);
-                const newBPM = Math.round(this.originalBPM * ratio);
-                this.setTempo(newBPM);
-                this.syncPopupControlsState();
-            });
-        }
-
-        if (gridPitchSlider) {
-            gridPitchSlider.addEventListener('input', (e) => {
-                const pitch = parseInt(e.target.value);
-                this.syncPitchValue(pitch);
-                this.setPitch(pitch);
-                this.syncPopupControlsState();
-            });
-        }
-    }
-
     syncPopupControlsState() {
+        try {
         // Sync play button state
         const playBtns = document.querySelectorAll('.popup-play-sync');
         playBtns.forEach(btn => {
@@ -4682,16 +4620,37 @@ class MobileApp {
             el.textContent = this.formatTime(this.duration);
         });
 
-        // Sync tempo sliders
-        const tempoRatio = this.currentBPM / this.originalBPM;
+        // Sync tempo sliders (ratio-based - legacy)
+        const originalBPM = this.originalBPM || 120;
+        const tempoRatio = (this.currentBPM || 120) / originalBPM;
         const tempoSliders = document.querySelectorAll('.popup-tempo-sync');
         tempoSliders.forEach(slider => {
-            slider.value = tempoRatio.toFixed(2);
+            if (isFinite(tempoRatio)) {
+                slider.value = tempoRatio.toFixed(2);
+            }
         });
 
         const tempoValues = document.querySelectorAll('.popup-tempo-value-sync');
         tempoValues.forEach(el => {
-            el.textContent = tempoRatio.toFixed(2) + 'x';
+            if (isFinite(tempoRatio)) {
+                el.textContent = tempoRatio.toFixed(2) + 'x';
+            }
+        });
+
+        // Sync tempo sliders (BPM-based - new)
+        const currentBPM = this.currentBPM || 120;  // Default to 120 if undefined
+        const tempoBpmSliders = document.querySelectorAll('.popup-tempo-bpm-sync');
+        tempoBpmSliders.forEach(slider => {
+            if (isFinite(currentBPM) && currentBPM > 0) {
+                slider.value = Math.round(currentBPM);
+            }
+        });
+
+        const tempoBpmValues = document.querySelectorAll('.popup-tempo-bpm-value-sync');
+        tempoBpmValues.forEach(el => {
+            if (isFinite(currentBPM) && currentBPM > 0) {
+                el.textContent = Math.round(currentBPM) + ' BPM';
+            }
         });
 
         // Sync pitch sliders
@@ -4705,24 +4664,255 @@ class MobileApp {
             const sign = this.currentPitchShift >= 0 ? '+' : '';
             el.textContent = sign + this.currentPitchShift;
         });
+        } catch (err) {
+            console.error('[syncPopupControlsState] Error:', err);
+        }
     }
 
-    openGridPopup() {
-        const popup = document.getElementById('chords-grid-popup');
-        if (!popup) return;
+    // ============================================
+    // GRID VIEW - MODERN CHORDS GRID POPUP
+    // ============================================
 
-        this.renderChordsGrid();
+    initGridView2Popup() {
+        const openBtn = document.getElementById('mobileGridView2Btn');
+        const closeBtn = document.getElementById('gridview2-popup-close');
+        const popup = document.getElementById('gridview2-popup');
+
+        if (!openBtn || !closeBtn || !popup) return;
+
+        openBtn.addEventListener('click', () => this.openGridView2Popup());
+        closeBtn.addEventListener('click', () => this.closeGridView2Popup());
+
+        // Close on overlay click
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) this.closeGridView2Popup();
+        });
+
+        // Close on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && popup.getAttribute('aria-hidden') === 'false') {
+                this.closeGridView2Popup();
+            }
+        });
+
+        // Initialize Grid View 2 controls (they use popup-*-sync classes)
+        this.initGridView2Controls();
+    }
+
+    initGridView2Controls() {
+        const playBtn = document.getElementById('gridview2PlayBtn');
+        const stopBtn = document.getElementById('gridview2StopBtn');
+        const tempoSlider = document.getElementById('gridview2TempoSlider');
+        const pitchSlider = document.getElementById('gridview2PitchSlider');
+
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                if (this.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            });
+        }
+
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => this.stop());
+        }
+
+        if (tempoSlider) {
+            tempoSlider.addEventListener('input', (e) => {
+                const targetBPM = parseInt(e.target.value);
+                const originalBPM = this.originalBPM || 120;
+                const ratio = targetBPM / originalBPM;
+                if (isFinite(ratio) && ratio > 0) {
+                    this.setTempo(ratio);
+                    this.syncPopupControlsState();
+                }
+            });
+        }
+
+        if (pitchSlider) {
+            pitchSlider.addEventListener('input', (e) => {
+                const pitch = parseInt(e.target.value);
+                this.syncPitchValue(pitch);
+                this.setPitch(pitch);
+                this.syncPopupControlsState();
+            });
+        }
+    }
+
+    openGridView2Popup() {
+        const popup = document.getElementById('gridview2-popup');
+        const content = document.getElementById('gridview2-content');
+
+        if (!popup || !content) {
+            console.warn('[GridView2] Missing popup elements');
+            return;
+        }
+
+        if (!this.chords || this.chords.length === 0) {
+            alert('No chords available. Generate chords first.');
+            return;
+        }
+
+        // Render the grid
+        this.renderGridView2(content);
+
+        // Open popup
         popup.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        this.gridView2Open = true;
+
+        // Sync controls state
         this.syncPopupControlsState();
+
+        // IMMEDIATE positioning on current beat - NO ANIMATION
+        const currentBeatIdx = this.getBeatIndexForTime(this.currentTime - (this.beatOffset || 0));
+        if (currentBeatIdx >= 0) {
+            // Use setTimeout to ensure DOM is rendered
+            setTimeout(() => {
+                this.highlightGridView2Beat(currentBeatIdx, true);
+            }, 0);
+        }
+
+        console.log('[GridView2] Opened with', this.gridView2Beats.length, 'beats');
     }
 
-    closeGridPopup() {
-        const popup = document.getElementById('chords-grid-popup');
+    closeGridView2Popup() {
+        const popup = document.getElementById('gridview2-popup');
         if (!popup) return;
 
         popup.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        this.gridView2Open = false;
+        this.gridView2Beats = [];
+
+        console.log('[GridView2] Closed');
+    }
+
+    renderGridView2(container) {
+        container.innerHTML = '';
+        this.gridView2Beats = [];
+
+        if (!this.chords || this.chords.length === 0) {
+            container.innerHTML = `
+                <div class="gridview2-empty">
+                    <i class="fas fa-music"></i>
+                    <p>No chords available</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Group chords into measures of 4 beats
+        const beatsPerMeasure = 4;
+        const measures = [];
+        let currentMeasure = [];
+
+        this.chords.forEach((chord, index) => {
+            currentMeasure.push({ chord, index });
+            if (currentMeasure.length === beatsPerMeasure) {
+                measures.push(currentMeasure);
+                currentMeasure = [];
+            }
+        });
+
+        // Add any remaining chords as a partial measure
+        if (currentMeasure.length > 0) {
+            // Fill remaining slots with empty beats
+            while (currentMeasure.length < beatsPerMeasure) {
+                currentMeasure.push({ chord: null, index: -1 });
+            }
+            measures.push(currentMeasure);
+        }
+
+        // Render measures
+        measures.forEach((measure, measureIndex) => {
+            const measureDiv = document.createElement('div');
+            measureDiv.className = 'gridview2-measure';
+
+            // Add measure number badge
+            const measureNum = document.createElement('span');
+            measureNum.className = 'gridview2-measure-number';
+            measureNum.textContent = `M${measureIndex + 1}`;
+            measureDiv.appendChild(measureNum);
+
+            measure.forEach((item, beatInMeasure) => {
+                const beatDiv = document.createElement('div');
+                beatDiv.className = 'gridview2-beat';
+
+                if (item.chord) {
+                    // Real chord
+                    beatDiv.textContent = item.chord.chord || '?';
+                    beatDiv.dataset.measure = measureIndex;
+                    beatDiv.dataset.beat = beatInMeasure;
+                    beatDiv.dataset.index = item.index;
+                    this.gridView2Beats.push(beatDiv);
+                } else {
+                    // Empty/rest beat
+                    beatDiv.classList.add('is-rest');
+                    beatDiv.textContent = '—';
+                }
+
+                measureDiv.appendChild(beatDiv);
+            });
+
+            container.appendChild(measureDiv);
+        });
+    }
+
+    highlightGridView2Beat(beatIndex, immediate = false) {
+        if (!this.gridView2Open) return;
+        if (!this.gridView2Beats || !this.gridView2Beats.length) return;
+
+        const activeBeat = this.gridView2Beats[beatIndex];
+        if (!activeBeat) return;
+
+        // Update classes for all beats (past/active/future)
+        this.gridView2Beats.forEach((beat, idx) => {
+            beat.classList.remove('active', 'past', 'future');
+            if (idx < beatIndex) {
+                beat.classList.add('past');
+            } else if (idx > beatIndex) {
+                beat.classList.add('future');
+            }
+        });
+
+        // Highlight active beat
+        activeBeat.classList.add('active');
+
+        // CENTER the active beat in the viewport - IMMEDIATE scroll (no smooth!)
+        const content = document.getElementById('gridview2-content');
+        if (!content) return;
+
+        const beatRect = activeBeat.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+
+        // Calculate where the beat center is relative to content center
+        const beatCenterY = beatRect.top + beatRect.height / 2;
+        const contentCenterY = contentRect.top + contentRect.height / 2;
+
+        // How much we need to scroll to center the beat
+        const scrollOffset = beatCenterY - contentCenterY;
+
+        // Apply scroll IMMEDIATELY (no animation)
+        content.scrollTop += scrollOffset;
+    }
+
+    syncGridView2() {
+        if (!this.gridView2Open) return;
+        if (!this.gridView2Beats || !this.gridView2Beats.length) return;
+
+        const currentTime = this.currentTime - (this.beatOffset || 0);
+        const beatIdx = this.getBeatIndexForTime(currentTime);
+
+        if (beatIdx >= 0 && beatIdx !== this.lastGridView2BeatIndex) {
+            this.highlightGridView2Beat(beatIdx);
+            this.lastGridView2BeatIndex = beatIdx;
+        }
+
+        // Sync popup controls state
+        this.syncPopupControlsState();
     }
 
     // ============================================
@@ -4909,12 +5099,23 @@ class MobileApp {
 
         if (immediate) {
             content.scrollTop = targetTop;
+            this.lastFullscreenScrollTime = Date.now();
+            this.lastFullscreenScrollIndex = index;
             return;
         }
 
-        if (Math.abs(content.scrollTop - targetTop) < 1) return;
+        // Skip if already at position
+        if (Math.abs(content.scrollTop - targetTop) < 5) return;
 
-        content.scrollTo({ top: targetTop, behavior: 'smooth' });
+        // Throttle smooth scrolls to max once per 300ms to avoid overwhelming mobile browsers
+        const now = Date.now();
+        if (this.lastFullscreenScrollTime && (now - this.lastFullscreenScrollTime) < 300 && this.lastFullscreenScrollIndex === index) {
+            return;
+        }
+
+        this.lastFullscreenScrollTime = now;
+        this.lastFullscreenScrollIndex = index;
+        content.scrollTop = targetTop; // Use immediate scroll instead of smooth on mobile
     }
 
     highlightFullscreenWords(segmentIndex, currentTime) {
@@ -4965,18 +5166,22 @@ class MobileApp {
     }
 
     updateFullscreenLyrics() {
-        if (!this.fullscreenLyricsOpen || !this.fullscreenLyricElements || this.fullscreenLyricElements.length === 0) return;
+        try {
+            if (!this.fullscreenLyricsOpen || !this.fullscreenLyricElements || this.fullscreenLyricElements.length === 0) return;
 
-        // Update line states
-        this.applyFullscreenLyricStates(this.activeLyricIndex);
+            // Update line states
+            this.applyFullscreenLyricStates(this.activeLyricIndex);
 
-        // Highlight words in current line
-        if (this.activeLyricIndex >= 0) {
-            this.highlightFullscreenWords(this.activeLyricIndex, this.currentTime);
+            // Highlight words in current line
+            if (this.activeLyricIndex >= 0) {
+                this.highlightFullscreenWords(this.activeLyricIndex, this.currentTime);
+            }
+
+            // Scroll to active line
+            this.scrollToFullscreenLyric(this.activeLyricIndex);
+        } catch (err) {
+            console.error('[updateFullscreenLyrics] Error:', err);
         }
-
-        // Scroll to active line
-        this.scrollToFullscreenLyric(this.activeLyricIndex);
     }
 
     applyFullscreenLyricsScale(scale) {
@@ -5016,10 +5221,13 @@ class MobileApp {
 
         if (tempoSlider) {
             tempoSlider.addEventListener('input', (e) => {
-                const ratio = parseFloat(e.target.value);
-                const newBPM = Math.round(this.originalBPM * ratio);
-                this.setTempo(newBPM);
-                this.syncPopupControlsState();
+                const targetBPM = parseInt(e.target.value);
+                const originalBPM = this.originalBPM || 120;
+                const ratio = targetBPM / originalBPM;
+                if (isFinite(ratio) && ratio > 0) {
+                    this.setTempo(ratio);
+                    this.syncPopupControlsState();
+                }
             });
         }
 
@@ -5031,225 +5239,6 @@ class MobileApp {
                 this.syncPopupControlsState();
             });
         }
-    }
-
-    renderChordsGrid() {
-        const container = document.getElementById('chords-grid-container');
-        if (!container || !this.chords.length) {
-            if (container) container.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--mobile-text-secondary);">No chords available</p>';
-            return;
-        }
-
-        this.gridBeatElements = []; // Reset grid beat elements
-
-        const bpm = this.chordBPM || this.currentBPM || this.originalBPM || 120;
-        const beatsPerBar = Math.max(2, Math.min(12, this.beatsPerBar || 4));
-        const measureSeconds = bpm > 0 ? ((beatsPerBar * 60) / bpm) : 4;
-
-        // Group chords by measures (same logic as displayChords)
-        const measures = [];
-        let currentMeasure = { number: 1, chords: [], startTime: 0 };
-        let currentMeasureStart = 0;
-
-        // First, group chords into measures
-        this.chords.forEach((chord, index) => {
-            const timestamp = chord.timestamp || 0;
-
-            // Check if we've moved to a new measure
-            if (timestamp >= currentMeasureStart + measureSeconds) {
-                if (currentMeasure.chords.length > 0) {
-                    measures.push(currentMeasure);
-                }
-                // Advance to the correct measure
-                const measureNumber = Math.floor(timestamp / measureSeconds) + 1;
-                currentMeasureStart = (measureNumber - 1) * measureSeconds;
-                currentMeasure = { number: measureNumber, chords: [], startTime: currentMeasureStart };
-            }
-
-            currentMeasure.chords.push({
-                chord: chord.chord || '',
-                timestamp,
-                index
-            });
-        });
-
-        // Add last measure
-        if (currentMeasure.chords.length > 0) {
-            measures.push(currentMeasure);
-        }
-
-        // Now convert each measure's chords into beat slots
-        let lastActiveChord = '';
-        measures.forEach(measure => {
-            const measureChords = measure.chords;
-
-            // If too many chords, simplify to downbeats only
-            if (measureChords.length > beatsPerBar) {
-                const beatDuration = measureSeconds / beatsPerBar;
-                const filteredChords = [];
-
-                for (let beat = 0; beat < beatsPerBar; beat++) {
-                    const beatStart = measure.startTime + (beat * beatDuration);
-                    const beatEnd = beatStart + beatDuration;
-
-                    const beatChord = measureChords.find(c => {
-                        const relTime = c.timestamp - measure.startTime;
-                        const beatPos = beat * beatDuration;
-                        return Math.abs(relTime - beatPos) < beatDuration * 0.3;
-                    });
-
-                    if (beatChord) {
-                        filteredChords.push(beatChord);
-                    }
-                }
-
-                measureChords.length = 0;
-                measureChords.push(...(filteredChords.length > 0 ? filteredChords : [measureChords[0]]));
-            }
-
-            // Create beat slots
-            measure.beats = [];
-            const beatDuration = measureSeconds / beatsPerBar;
-
-            for (let beat = 0; beat < beatsPerBar; beat++) {
-                const beatStart = measure.startTime + (beat * beatDuration);
-                const beatEnd = beatStart + beatDuration;
-
-                const beatChord = measureChords.find(c =>
-                    c.timestamp >= beatStart && c.timestamp < beatEnd
-                );
-
-                if (beatChord) {
-                    lastActiveChord = beatChord.chord;
-                    measure.beats.push({
-                        chord: beatChord.chord,
-                        timestamp: beatChord.timestamp,
-                        index: beatChord.index,
-                        empty: false
-                    });
-                } else {
-                    // Empty beat, but carries the current chord
-                    measure.beats.push({
-                        empty: true,
-                        currentChord: lastActiveChord
-                    });
-                }
-            }
-        });
-
-        // Render the grid
-        container.innerHTML = '';
-        measures.forEach((measure, measureIndex) => {
-            const measureEl = document.createElement('div');
-            measureEl.className = 'chord-grid-measure';
-
-            const labelEl = document.createElement('div');
-            labelEl.className = 'chord-grid-measure-label';
-            labelEl.textContent = measure.number;
-            measureEl.appendChild(labelEl);
-
-            const beatsContainer = document.createElement('div');
-            beatsContainer.className = 'chord-grid-beats';
-
-            measure.beats.forEach((beat, beatIndex) => {
-                const beatEl = document.createElement('div');
-                beatEl.className = 'chord-grid-beat';
-
-                // Calculate beat timestamp
-                const beatDuration = measureSeconds / beatsPerBar;
-                const beatTimestamp = measure.startTime + (beatIndex * beatDuration);
-
-                beatEl.dataset.beatTime = beatTimestamp;
-                beatEl.dataset.measureIndex = measureIndex;
-                beatEl.dataset.beatIndex = beatIndex;
-
-                if (beat.empty) {
-                    beatEl.classList.add('empty');
-                    beatEl.dataset.currentChord = beat.currentChord || '';
-                    const displayChord = beat.currentChord ? this.transposeChord(beat.currentChord, this.currentPitchShift) : '';
-                    beatEl.innerHTML = `
-                        <div class="chord-grid-beat-name">—</div>
-                        <div class="chord-grid-beat-time">${this.formatTime(beatTimestamp)}</div>
-                    `;
-                } else {
-                    beatEl.dataset.timestamp = beat.timestamp;
-                    beatEl.dataset.index = beat.index;
-                    beatEl.dataset.currentChord = beat.chord;
-
-                    const transposedChord = this.transposeChord(beat.chord, this.currentPitchShift);
-                    beatEl.innerHTML = `
-                        <div class="chord-grid-beat-name">${transposedChord}</div>
-                        <div class="chord-grid-beat-time">${this.formatTime(beat.timestamp)}</div>
-                    `;
-                }
-
-                beatEl.addEventListener('click', () => {
-                    this.seek(beatTimestamp);
-                    const clickedBeatIdx = this.gridBeatElements.indexOf(beatEl);
-                    if (clickedBeatIdx !== -1) {
-                        this.highlightGridBeat(clickedBeatIdx);
-                    }
-                });
-
-                this.gridBeatElements.push(beatEl);
-                beatsContainer.appendChild(beatEl);
-            });
-
-            measureEl.appendChild(beatsContainer);
-            container.appendChild(measureEl);
-        });
-
-        // Highlight current beat using beatIndex
-        if (this.beatElements && this.beatElements.length) {
-            const currentBeatIdx = this.getBeatIndexForTime(this.currentTime - (this.beatOffset || 0));
-            this.highlightGridBeat(currentBeatIdx);
-        }
-    }
-
-    highlightGridBeat(beatIndex) {
-        if (!this.gridBeatElements || !this.gridBeatElements.length) return;
-
-        const activeBeat = this.gridBeatElements[beatIndex];
-        if (!activeBeat) return;
-
-        // Remove active class from all grid beats
-        this.gridBeatElements.forEach(el => el.classList.remove('active'));
-        activeBeat.classList.add('active');
-
-        // Auto-scroll to keep focus near the top (first row position)
-        // This gives the musician maximum visibility of upcoming chords
-        const popup = document.getElementById('chords-grid-popup');
-        const popupBody = popup?.querySelector('.chords-grid-popup-body');
-        if (popupBody) {
-            const parentMeasure = activeBeat.closest('.chord-grid-measure');
-            if (parentMeasure) {
-                const relativeTop = parentMeasure.offsetTop - popupBody.offsetTop;
-
-                // Position so the active measure appears at the top with a small margin
-                const topMargin = 10; // 10px from top
-                const targetScroll = Math.max(0, relativeTop - topMargin);
-
-                popupBody.scrollTo({
-                    top: targetScroll,
-                    behavior: 'smooth'
-                });
-            }
-        }
-    }
-
-    syncGridView() {
-        const popup = document.getElementById('chords-grid-popup');
-        if (!popup || popup.getAttribute('aria-hidden') === 'true') return;
-        if (!this.gridBeatElements || !this.gridBeatElements.length) return;
-
-        const currentTime = this.currentTime - (this.beatOffset || 0);
-        const beatIdx = this.getBeatIndexForTime(currentTime);
-        if (beatIdx !== -1) {
-            this.highlightGridBeat(beatIdx);
-        }
-
-        // Sync popup controls state
-        this.syncPopupControlsState();
     }
 }
 

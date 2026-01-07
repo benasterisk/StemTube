@@ -195,7 +195,7 @@
                         <button id="mobileRegenerateChords" class="mobile-btn mobile-btn-ghost">
                             <i class="fas fa-sync-alt"></i> Regenerate Chords
                         </button>
-                        <button id="mobileChordGridViewBtn" class="mobile-btn mobile-btn-ghost">
+                        <button id="mobileGridView2Btn" class="mobile-btn mobile-btn-ghost">
                             <i class="fas fa-th"></i> Grid View
                         </button>
                     </div>
@@ -264,7 +264,7 @@
                             <i class="fas fa-magic"></i>
                             <span>Generate Lyrics</span>
                         </button>
-                        <button id="mobileFullScreenLyrics" class="mobile-btn mobile-btn-primary">
+                        <button id="mobileFullScreenLyrics" class="mobile-btn mobile-btn-ghost">
                             <i class="fas fa-expand-arrows-alt"></i>
                             <span>Full Screen</span>
                         </button>
@@ -277,50 +277,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Chords Grid Popup -->
-    <div class="chords-grid-popup-overlay" id="chords-grid-popup" aria-hidden="true">
-        <div class="chords-grid-popup-dialog">
-            <div class="chords-grid-popup-header">
-                <h3>Chords Grid View</h3>
-                <button class="chords-grid-popup-close" id="chords-grid-popup-close">
-                    <i class="fas fa-times"></i>
-                    <span>Close</span>
-                </button>
-            </div>
-            <!-- Control bar for Grid View -->
-            <div class="popup-controls-bar">
-                <div class="popup-playback-controls">
-                    <button id="gridPlayBtn" class="popup-control-btn popup-play-sync">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button id="gridStopBtn" class="popup-control-btn popup-stop-sync">
-                        <i class="fas fa-stop"></i>
-                    </button>
-                    <div class="popup-time-display">
-                        <span id="gridCurrentTime" class="popup-time-sync">0:00</span> / <span id="gridDuration" class="popup-duration-sync">0:00</span>
-                    </div>
-                </div>
-                <div class="popup-sliders">
-                    <div class="popup-slider-group">
-                        <span class="popup-slider-label">Tempo</span>
-                        <input type="range" id="gridTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="popup-slider popup-tempo-sync">
-                        <span id="gridTempoValue" class="popup-slider-value popup-tempo-value-sync">1.0x</span>
-                    </div>
-                    <div class="popup-slider-group">
-                        <span class="popup-slider-label">Pitch</span>
-                        <input type="range" id="gridPitchSlider" min="-12" max="12" value="0" step="1" class="popup-slider popup-pitch-sync">
-                        <span id="gridPitchValue" class="popup-slider-value popup-pitch-value-sync">0</span>
-                    </div>
-                </div>
-            </div>
-            <div class="chords-grid-popup-body">
-                <div class="chords-grid-container" id="chords-grid-container">
-                    <!-- Chords grid will be rendered here -->
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Full Screen Lyrics Popup -->
     <div class="fullscreen-lyrics-overlay" id="fullscreen-lyrics-popup" aria-hidden="true">
@@ -350,8 +306,8 @@
                 <div class="fullscreen-sliders">
                     <div class="fullscreen-slider-group">
                         <span class="fullscreen-slider-label">Tempo</span>
-                        <input type="range" id="fullscreenLyricsTempoSlider" min="0.5" max="2.0" value="1.0" step="0.05" class="fullscreen-slider popup-tempo-sync">
-                        <span id="fullscreenLyricsTempoValue" class="fullscreen-slider-value popup-tempo-value-sync">1.0x</span>
+                        <input type="range" id="fullscreenLyricsTempoSlider" min="40" max="300" value="120" step="1" class="fullscreen-slider popup-tempo-bpm-sync">
+                        <span id="fullscreenLyricsTempoValue" class="fullscreen-slider-value popup-tempo-bpm-value-sync">120 BPM</span>
                     </div>
                     <div class="fullscreen-slider-group">
                         <span class="fullscreen-slider-label">Pitch</span>
@@ -368,6 +324,51 @@
             <div class="fullscreen-lyrics-body">
                 <div class="fullscreen-lyrics-content" id="fullscreen-lyrics-content">
                     <!-- Lyrics will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid View 2 Popup - Modern Chords Grid -->
+    <div class="gridview2-overlay" id="gridview2-popup" aria-hidden="true">
+        <div class="gridview2-dialog">
+            <div class="gridview2-header">
+                <h3>Chords Grid</h3>
+                <button class="gridview2-close" id="gridview2-popup-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- Transport bar -->
+            <div class="gridview2-transport">
+                <div class="gridview2-playback">
+                    <button id="gridview2PlayBtn" class="gridview2-control-btn popup-play-sync">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="gridview2StopBtn" class="gridview2-control-btn popup-stop-sync">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <div class="gridview2-time">
+                        <span id="gridview2CurrentTime" class="popup-time-sync">0:00</span>
+                        <span class="gridview2-time-sep">/</span>
+                        <span id="gridview2Duration" class="popup-duration-sync">0:00</span>
+                    </div>
+                </div>
+                <div class="gridview2-sliders">
+                    <div class="gridview2-slider-group">
+                        <span class="gridview2-slider-label">Tempo</span>
+                        <input type="range" id="gridview2TempoSlider" min="40" max="300" value="120" step="1" class="gridview2-slider popup-tempo-bpm-sync">
+                        <span id="gridview2TempoValue" class="gridview2-slider-value popup-tempo-bpm-value-sync">120 BPM</span>
+                    </div>
+                    <div class="gridview2-slider-group">
+                        <span class="gridview2-slider-label">Pitch</span>
+                        <input type="range" id="gridview2PitchSlider" min="-12" max="12" value="0" step="1" class="gridview2-slider popup-pitch-sync">
+                        <span id="gridview2PitchValue" class="gridview2-slider-value popup-pitch-value-sync">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="gridview2-body">
+                <div class="gridview2-content" id="gridview2-content">
+                    <!-- Chords grid will be rendered here -->
                 </div>
             </div>
         </div>
