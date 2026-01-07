@@ -1110,7 +1110,16 @@ function loadDownloads() {
                 const downloadElement = createDownloadElement(item);
                 downloadsContainer.appendChild(downloadElement);
             });
-            
+
+            // Batch fetch extraction statuses for all completed downloads
+            const completedVideoIds = data
+                .filter(item => item.status === 'completed' && item.video_id)
+                .map(item => item.video_id);
+
+            if (completedVideoIds.length > 0) {
+                batchUpdateExtractionStatuses(completedVideoIds);
+            }
+
             // Update left panel if we're on extractions tab
             updateDownloadsListForExtraction(data);
             
@@ -1141,7 +1150,43 @@ function loadExtractions() {
     loadDownloads();
 }
 
-// Check extraction status for a video
+// Batch fetch extraction statuses for multiple videos at once
+async function batchUpdateExtractionStatuses(videoIds) {
+    if (!videoIds || videoIds.length === 0) return;
+
+    try {
+        const response = await fetch('/api/downloads/batch-extraction-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({ video_ids: videoIds })
+        });
+
+        if (!response.ok) {
+            console.error('Batch extraction status failed:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+        const statuses = data.statuses || {};
+
+        // Update all buttons at once
+        for (const videoId of videoIds) {
+            const status = statuses[videoId] || { exists: false, user_has_access: false, status: 'not_extracted' };
+            const extractButton = document.querySelector(`.extract-button[data-video-id="${videoId}"]`);
+            if (extractButton) {
+                const downloadElement = extractButton.closest('.download-item');
+                await updateExtractButton(extractButton, status, downloadElement);
+            }
+        }
+    } catch (error) {
+        console.error('Error batch fetching extraction statuses:', error);
+    }
+}
+
+// Check extraction status for a video (kept for single-item updates)
 async function checkExtractionStatus(videoId) {
     try {
         const response = await fetch(`/api/downloads/${encodeURIComponent(videoId)}/extraction-status`, {
@@ -1149,11 +1194,11 @@ async function checkExtractionStatus(videoId) {
                 'X-CSRF-Token': getCsrfToken()
             }
         });
-        
+
         if (!response.ok) {
             return { exists: false, user_has_access: false, status: 'not_extracted' };
         }
-        
+
         return await response.json();
     } catch (error) {
         console.error('Error checking extraction status:', error);
@@ -1451,15 +1496,8 @@ function createDownloadElement(item) {
         </div>
     `;
     
-    // Add event listeners and update extraction status
+    // Add event listeners (extraction status is now fetched in batch by loadDownloads)
     setTimeout(async () => {
-        const extractButton = downloadElement.querySelector('.extract-button');
-        if (extractButton && extractButton.classList.contains('loading')) {
-            // Check extraction status
-            const extractionStatus = await checkExtractionStatus(item.video_id);
-            await updateExtractButton(extractButton, extractionStatus, downloadElement);
-        }
-
         // Setup download dropdown
         const downloadDropdown = downloadElement.querySelector('.download-dropdown');
         if (downloadDropdown) {

@@ -1156,9 +1156,81 @@ def check_video_extraction_status(video_id):
             response_data['extraction_id'] = global_extraction.get('id')
 
         return jsonify(response_data)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/downloads/batch-extraction-status', methods=['POST'])
+@api_login_required
+def batch_check_extraction_status():
+    """Check extraction status for multiple video_ids at once."""
+    try:
+        data = request.json or {}
+        video_ids = data.get('video_ids', [])
+
+        if not video_ids or not isinstance(video_ids, list):
+            return jsonify({'error': 'video_ids array required'}), 400
+
+        # Limit to prevent abuse
+        if len(video_ids) > 100:
+            video_ids = video_ids[:100]
+
+        # Get all user extractions once (instead of per video)
+        user_extractions = db_list_extractions(current_user.id)
+        user_extracted_videos = {
+            ext['video_id']: ext
+            for ext in user_extractions
+            if ext.get('extracted') == 1
+        }
+
+        results = {}
+        for video_id in video_ids:
+            # Check if global extraction exists
+            global_extraction = db_find_any_global_extraction(video_id)
+
+            if not global_extraction:
+                results[video_id] = {
+                    'exists': False,
+                    'user_has_access': False,
+                    'status': 'not_extracted'
+                }
+                continue
+
+            # Check if user has access
+            user_has_access = video_id in user_extracted_videos
+
+            response_data = {
+                'exists': True,
+                'user_has_access': user_has_access,
+                'status': 'extracted' if user_has_access else 'extracted_no_access',
+                'extraction_model': global_extraction.get('extraction_model'),
+            }
+
+            # If user has access, include stems information
+            if user_has_access:
+                stems_paths_json = global_extraction.get('stems_paths')
+                if stems_paths_json:
+                    try:
+                        response_data['stems_paths'] = json.loads(stems_paths_json) if isinstance(stems_paths_json, str) else stems_paths_json
+                        response_data['stems_available'] = True
+                    except:
+                        response_data['stems_available'] = False
+                else:
+                    response_data['stems_available'] = False
+
+                if global_extraction.get('stems_zip_path'):
+                    response_data['zip_path'] = global_extraction.get('stems_zip_path')
+                response_data['extraction_id'] = global_extraction.get('id')
+
+            results[video_id] = response_data
+
+        return jsonify({'statuses': results})
+
+    except Exception as e:
+        logger.error(f"Batch extraction status error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/downloads', methods=['POST'])
 @api_login_required

@@ -940,11 +940,49 @@ class MobileApp {
                 const mix = div.querySelector('.mix-btn');
                 if (extract) extract.addEventListener('click', e => { e.stopPropagation(); this.extractStems(item); });
                 if (mix) mix.addEventListener('click', e => { e.stopPropagation(); this.openMixer(item); });
-                if (!hasStems) this.ensureExtractionStatusForItem(div, item, statusInfo);
             }
-            
+
             container.appendChild(div);
         });
+
+        // Batch fetch extraction statuses for items without stems (instead of individual calls)
+        if (!isGlobal) {
+            const videoIdsToCheck = items
+                .filter(item => !item.extracted && !item.has_extraction && !item.user_has_extraction_access && item.video_id)
+                .map(item => item.video_id);
+            if (videoIdsToCheck.length > 0) {
+                this.batchFetchExtractionStatuses(videoIdsToCheck, container);
+            }
+        }
+    }
+
+    async batchFetchExtractionStatuses(videoIds, container) {
+        try {
+            const res = await fetch('/api/downloads/batch-extraction-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ video_ids: videoIds })
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const statuses = data.statuses || {};
+
+            for (const videoId of videoIds) {
+                const status = statuses[videoId];
+                if (!status) continue;
+                const element = container.querySelector(`[data-video-id="${videoId}"]`);
+                if (!element) continue;
+                const item = element.__libraryItem;
+
+                if (status.status === 'extracted') {
+                    this.markItemReady(element, item, status);
+                } else if (status.status === 'extracted_no_access') {
+                    this.markItemNeedsAccess(element, item, status);
+                }
+            }
+        } catch (err) {
+            console.warn('[Library] Batch extraction status check failed:', err);
+        }
     }
     
     getStatusInfo(item, hasStems, isGlobal, alreadyInLibrary) {
