@@ -689,7 +689,8 @@ class ChordDisplay {
 
             const bpm = this.chordBPM || this.currentBPM || this.originalBPM || 120;
             const beatsPerBar = Math.max(2, Math.min(12, this.beatsPerBar || 4));
-            const measureSeconds = bpm > 0 ? ((beatsPerBar * 60) / bpm) : 4;
+            const beatDuration = 60 / bpm;
+            const measureSeconds = beatDuration * beatsPerBar;
 
             this.chordPxPerBeat = 100; // Fixed width per beat for grid
             this.chordBPM = bpm;
@@ -698,108 +699,105 @@ class ChordDisplay {
             this.beatElements = []; // All beat elements including empty ones
             this.currentChordIndex = -1;
 
-            // Group chords by measures
-            const measures = [];
-            let currentMeasure = { number: 1, chords: [], startTime: 0 };
-            let currentMeasureStart = 0;
+            // Apply beatOffset to align chord timestamps with the beat grid
+            const offset = this.beatOffset || 0;
 
-            // First, group chords into measures
-            this.chords.forEach((chord, index) => {
-                const timestamp = chord.timestamp || 0;
+            // Quantize chords to nearest STRONG beat (1 or 3) with beatOffset
+            const quantizedChords = [...this.chords].map(chord => {
+                const originalTime = (chord.timestamp || 0) - offset;
 
-                // Check if we've moved to a new measure
-                if (timestamp >= currentMeasureStart + measureSeconds) {
-                    if (currentMeasure.chords.length > 0) {
-                        measures.push(currentMeasure);
-                    }
-                    // Advance to the correct measure
-                    const measureNumber = Math.floor(timestamp / measureSeconds) + 1;
-                    currentMeasureStart = (measureNumber - 1) * measureSeconds;
-                    currentMeasure = { number: measureNumber, chords: [], startTime: currentMeasureStart };
+                // Find the measure this chord belongs to
+                const measureIndex = Math.floor(Math.max(0, originalTime) / measureSeconds);
+                const measureStart = measureIndex * measureSeconds;
+
+                // Strong beats are at 0 (beat 1) and 2*beatDuration (beat 3)
+                const beat1Time = measureStart;
+                const beat3Time = measureStart + (2 * beatDuration);
+
+                // Check distance to each strong beat
+                const distToBeat1 = Math.abs(originalTime - beat1Time);
+                const distToBeat3 = Math.abs(originalTime - beat3Time);
+
+                // Tolerance: snap to strong beat if within 0.7 of a beat duration
+                const strongBeatTolerance = beatDuration * 0.7;
+
+                let quantizedTime;
+                if (distToBeat1 <= strongBeatTolerance) {
+                    quantizedTime = beat1Time;
+                } else if (distToBeat3 <= strongBeatTolerance) {
+                    quantizedTime = beat3Time;
+                } else {
+                    // Fall back to nearest beat
+                    quantizedTime = Math.round(originalTime / beatDuration) * beatDuration;
                 }
 
-                currentMeasure.chords.push({
-                    chord: chord.chord || '',
-                    timestamp,
-                    index,
-                    sourceIndex: index
-                });
+                return {
+                    ...chord,
+                    timestamp: Math.max(0, quantizedTime),
+                    originalTimestamp: chord.timestamp
+                };
+            }).sort((a, b) => a.timestamp - b.timestamp);
 
+            // Build chordSegments for diagram display
+            quantizedChords.forEach((chord, index) => {
                 this.chordSegments.push({
                     chord: chord.chord || '',
-                    start: timestamp,
-                    end: this.chords[index + 1]?.timestamp ?? this.duration,
+                    start: chord.timestamp,
+                    end: quantizedChords[index + 1]?.timestamp ?? this.duration,
                     sourceIndex: index
                 });
             });
 
-            // Add last measure
-            if (currentMeasure.chords.length > 0) {
-                measures.push(currentMeasure);
-            }
+            // Calculate total measures needed
+            const totalDuration = this.duration || 180;
+            const totalMeasures = Math.ceil(totalDuration / measureSeconds);
 
-            // Now convert each measure's chords into beat slots
+            // Create ALL measures with beat slots
+            const measures = [];
             let lastActiveChord = '';
-            measures.forEach(measure => {
-                const measureChords = measure.chords;
+            let chordIndex = 0;
 
-                // If too many chords, simplify to downbeats only
-                if (measureChords.length > beatsPerBar) {
-                    // Keep only chords that fall on or very close to beat boundaries
-                    const beatDuration = measureSeconds / beatsPerBar;
-                    const filteredChords = [];
-
-                    for (let beat = 0; beat < beatsPerBar; beat++) {
-                        const beatStart = measure.startTime + (beat * beatDuration);
-                        const beatEnd = beatStart + beatDuration;
-
-                        // Find chord closest to this beat
-                        const beatChord = measureChords.find(c => {
-                            const relTime = c.timestamp - measure.startTime;
-                            const beatPos = beat * beatDuration;
-                            return Math.abs(relTime - beatPos) < beatDuration * 0.3;
-                        });
-
-                        if (beatChord) {
-                            filteredChords.push(beatChord);
-                        }
-                    }
-
-                    measureChords.length = 0;
-                    measureChords.push(...(filteredChords.length > 0 ? filteredChords : [measureChords[0]]));
-                }
-
-                // Create beat slots
-                measure.beats = [];
-                const beatDuration = measureSeconds / beatsPerBar;
+            for (let measureNum = 0; measureNum < totalMeasures; measureNum++) {
+                const measureStartTime = measureNum * measureSeconds;
+                const measure = {
+                    number: measureNum + 1,
+                    startTime: measureStartTime,
+                    beats: []
+                };
 
                 for (let beat = 0; beat < beatsPerBar; beat++) {
-                    const beatStart = measure.startTime + (beat * beatDuration);
-                    const beatEnd = beatStart + beatDuration;
+                    const beatTime = measureStartTime + (beat * beatDuration);
 
-                    // Find chord that starts in this beat slot
-                    const beatChord = measureChords.find(c =>
-                        c.timestamp >= beatStart && c.timestamp < beatEnd
-                    );
+                    // Find chord active at this beat
+                    while (chordIndex < quantizedChords.length - 1 &&
+                           quantizedChords[chordIndex + 1].timestamp <= beatTime + 0.01) {
+                        chordIndex++;
+                    }
 
-                    if (beatChord) {
-                        lastActiveChord = beatChord.chord;
+                    const activeChord = quantizedChords[chordIndex];
+                    const chordName = activeChord?.chord || '';
+
+                    // Check if chord changes at this beat
+                    if (chordName && chordName !== lastActiveChord) {
                         measure.beats.push({
-                            chord: beatChord.chord,
-                            timestamp: beatChord.timestamp,
-                            index: beatChord.index,
-                            sourceIndex: beatChord.sourceIndex,
+                            chord: chordName,
+                            timestamp: beatTime,
+                            index: chordIndex,
+                            sourceIndex: chordIndex,
                             empty: false
                         });
+                        lastActiveChord = chordName;
                     } else {
-                        // Empty beat, but carries the current chord
                         measure.beats.push({
                             empty: true,
-                            currentChord: lastActiveChord
+                            currentChord: lastActiveChord,
+                            timestamp: beatTime
                         });
                     }
                 }
-            });
+
+                measures.push(measure);
+            }
 
             // Get lyrics if available
             const lyrics = this.mixer?.lyricsDisplay?.lyrics || window.EXTRACTION_INFO?.lyrics_data;
@@ -2086,98 +2084,97 @@ class ChordDisplay {
 
         const bpm = this.chordBPM || this.currentBPM || this.originalBPM || 120;
         const beatsPerBar = Math.max(2, Math.min(12, this.beatsPerBar || 4));
-        const measureSeconds = bpm > 0 ? ((beatsPerBar * 60) / bpm) : 4;
+        const beatDuration = 60 / bpm;
+        const measureSeconds = beatDuration * beatsPerBar;
 
-        // Group chords by measures (same logic as displayChords)
+        // Apply beatOffset to align chord timestamps with the beat grid
+        const offset = this.beatOffset || 0;
+
+        // Quantize chords to nearest STRONG beat (1 or 3) with beatOffset
+        const quantizedChords = [...this.chords].map(chord => {
+            const originalTime = (chord.timestamp || 0) - offset;
+
+            // Find the measure this chord belongs to
+            const measureIndex = Math.floor(Math.max(0, originalTime) / measureSeconds);
+            const measureStart = measureIndex * measureSeconds;
+
+            // Strong beats are at 0 (beat 1) and 2*beatDuration (beat 3)
+            const beat1Time = measureStart;
+            const beat3Time = measureStart + (2 * beatDuration);
+
+            // Check distance to each strong beat
+            const distToBeat1 = Math.abs(originalTime - beat1Time);
+            const distToBeat3 = Math.abs(originalTime - beat3Time);
+
+            // Tolerance: snap to strong beat if within 0.7 of a beat duration
+            const strongBeatTolerance = beatDuration * 0.7;
+
+            let quantizedTime;
+            if (distToBeat1 <= strongBeatTolerance) {
+                quantizedTime = beat1Time;
+            } else if (distToBeat3 <= strongBeatTolerance) {
+                quantizedTime = beat3Time;
+            } else {
+                // Fall back to nearest beat
+                quantizedTime = Math.round(originalTime / beatDuration) * beatDuration;
+            }
+
+            return {
+                ...chord,
+                timestamp: Math.max(0, quantizedTime),
+                originalTimestamp: chord.timestamp
+            };
+        }).sort((a, b) => a.timestamp - b.timestamp);
+
+        // Calculate total measures needed
+        const totalDuration = this.duration || 180;
+        const totalMeasures = Math.ceil(totalDuration / measureSeconds);
+
+        // Create ALL measures with beat slots
         const measures = [];
-        let currentMeasure = { number: 1, chords: [], startTime: 0 };
-        let currentMeasureStart = 0;
-
-        // First, group chords into measures
-        this.chords.forEach((chord, index) => {
-            const timestamp = chord.timestamp || 0;
-
-            // Check if we've moved to a new measure
-            if (timestamp >= currentMeasureStart + measureSeconds) {
-                if (currentMeasure.chords.length > 0) {
-                    measures.push(currentMeasure);
-                }
-                // Advance to the correct measure
-                const measureNumber = Math.floor(timestamp / measureSeconds) + 1;
-                currentMeasureStart = (measureNumber - 1) * measureSeconds;
-                currentMeasure = { number: measureNumber, chords: [], startTime: currentMeasureStart };
-            }
-
-            currentMeasure.chords.push({
-                chord: chord.chord || '',
-                timestamp,
-                index
-            });
-        });
-
-        // Add last measure
-        if (currentMeasure.chords.length > 0) {
-            measures.push(currentMeasure);
-        }
-
-        // Now convert each measure's chords into beat slots
         let lastActiveChord = '';
-        measures.forEach(measure => {
-            const measureChords = measure.chords;
+        let chordIndex = 0;
 
-            // If too many chords, simplify to downbeats only
-            if (measureChords.length > beatsPerBar) {
-                const beatDuration = measureSeconds / beatsPerBar;
-                const filteredChords = [];
-
-                for (let beat = 0; beat < beatsPerBar; beat++) {
-                    const beatStart = measure.startTime + (beat * beatDuration);
-                    const beatEnd = beatStart + beatDuration;
-
-                    const beatChord = measureChords.find(c => {
-                        const relTime = c.timestamp - measure.startTime;
-                        const beatPos = beat * beatDuration;
-                        return Math.abs(relTime - beatPos) < beatDuration * 0.3;
-                    });
-
-                    if (beatChord) {
-                        filteredChords.push(beatChord);
-                    }
-                }
-
-                measureChords.length = 0;
-                measureChords.push(...(filteredChords.length > 0 ? filteredChords : [measureChords[0]]));
-            }
-
-            // Create beat slots
-            measure.beats = [];
-            const beatDuration = measureSeconds / beatsPerBar;
+        for (let measureNum = 0; measureNum < totalMeasures; measureNum++) {
+            const measureStartTime = measureNum * measureSeconds;
+            const measure = {
+                number: measureNum + 1,
+                startTime: measureStartTime,
+                beats: []
+            };
 
             for (let beat = 0; beat < beatsPerBar; beat++) {
-                const beatStart = measure.startTime + (beat * beatDuration);
-                const beatEnd = beatStart + beatDuration;
+                const beatTime = measureStartTime + (beat * beatDuration);
 
-                const beatChord = measureChords.find(c =>
-                    c.timestamp >= beatStart && c.timestamp < beatEnd
-                );
+                // Find chord active at this beat
+                while (chordIndex < quantizedChords.length - 1 &&
+                       quantizedChords[chordIndex + 1].timestamp <= beatTime + 0.01) {
+                    chordIndex++;
+                }
 
-                if (beatChord) {
-                    lastActiveChord = beatChord.chord;
+                const activeChord = quantizedChords[chordIndex];
+                const chordName = activeChord?.chord || '';
+
+                // Check if chord changes at this beat
+                if (chordName && chordName !== lastActiveChord) {
                     measure.beats.push({
-                        chord: beatChord.chord,
-                        timestamp: beatChord.timestamp,
-                        index: beatChord.index,
+                        chord: chordName,
+                        timestamp: beatTime,
+                        index: chordIndex,
                         empty: false
                     });
+                    lastActiveChord = chordName;
                 } else {
-                    // Empty beat, but carries the current chord
                     measure.beats.push({
                         empty: true,
-                        currentChord: lastActiveChord
+                        currentChord: lastActiveChord,
+                        timestamp: beatTime
                     });
                 }
             }
-        });
+
+            measures.push(measure);
+        }
 
         // Render the grid
         container.innerHTML = '';

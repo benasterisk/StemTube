@@ -3513,9 +3513,9 @@
 }
 
 /* Rest/empty beat indicator */
-.gridview2-beat.is-rest {
-    color: rgba(255, 255, 255, 0.2);
-    font-style: italic;
+.gridview2-beat.is-rest,
+.gridview2-beat.is-empty {
+    color: rgba(255, 255, 255, 0.25);
     font-size: 1rem;
 }
 
