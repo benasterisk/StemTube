@@ -107,6 +107,8 @@ class MobileApp {
         this.gridView2Beats = [];
         this.lastGridView2BeatIndex = -1;
         this.lastGridView2ControlSync = 0;
+        this.gridView2PopupInitialized = false;
+        this.gridView2ControlsInitialized = false;
         this.playheadIndicator = null;
         this.myLibraryVideoIds = new Set(); // Track user's library video IDs
         this.libraryRefreshTimer = null;
@@ -1950,6 +1952,9 @@ class MobileApp {
         // Setup fullscreen lyrics controls
         this.initFullscreenLyricsControls();
 
+        // Setup grid view 2 controls
+        this.initGridView2Controls();
+
         const regenerateChordsBtn = document.getElementById('mobileRegenerateChords');
         if (regenerateChordsBtn) regenerateChordsBtn.addEventListener('click', () => this.regenerateChords());
 
@@ -2138,7 +2143,7 @@ class MobileApp {
 
     updatePlayPauseButtons() {
         const iconClass = this.isPlaying ? 'fa-pause' : 'fa-play';
-        const playBtnIds = ['mobilePlayBtn', 'mobilePlayBtnChords', 'mobilePlayBtnLyrics'];
+        const playBtnIds = ['mobilePlayBtn', 'mobilePlayBtnChords', 'mobilePlayBtnLyrics', 'gridview2PlayBtn', 'fullscreenLyricsPlayBtn'];
         playBtnIds.forEach(id => {
             const btn = document.getElementById(id);
             if (btn) {
@@ -2542,6 +2547,8 @@ class MobileApp {
         this.applyTempoPitchTargets(targets);
         this.updateChordLabels();
         this.updateLyricsChordTransposition();
+        this.updateGridView2Chords();
+        this.updateFullscreenLyricsChords();
     }
 
     calculateTempoPitchTargets() {
@@ -4778,6 +4785,9 @@ class MobileApp {
     // ============================================
 
     initGridView2Popup() {
+        // Prevent duplicate initialization
+        if (this.gridView2PopupInitialized) return;
+
         const openBtn = document.getElementById('mobileGridView2Btn');
         const closeBtn = document.getElementById('gridview2-popup-close');
         const popup = document.getElementById('gridview2-popup');
@@ -4799,11 +4809,14 @@ class MobileApp {
             }
         });
 
-        // Initialize Grid View 2 controls (they use popup-*-sync classes)
-        this.initGridView2Controls();
+        // Mark as initialized to prevent duplicate event listeners
+        this.gridView2PopupInitialized = true;
     }
 
     initGridView2Controls() {
+        // Prevent duplicate initialization
+        if (this.gridView2ControlsInitialized) return;
+
         const playBtn = document.getElementById('gridview2PlayBtn');
         const stopBtn = document.getElementById('gridview2StopBtn');
 
@@ -4818,6 +4831,7 @@ class MobileApp {
 
         // Note: Tempo/Pitch sliders have been replaced with neumorphic trigger buttons
         // The triggers are handled in setupNeumorphicDialControls()
+        this.gridView2ControlsInitialized = true;
     }
 
     openGridView2Popup() {
@@ -5077,6 +5091,32 @@ class MobileApp {
             this.syncPopupControlsState();
             this.lastGridView2ControlSync = now;
         }
+    }
+
+    updateGridView2Chords() {
+        if (!this.gridView2Open || !this.gridView2Beats || !this.gridView2Beats.length) return;
+
+        let lastShownChord = '';
+        this.gridView2Beats.forEach(beatDiv => {
+            const originalChord = beatDiv.dataset.currentChord;
+            if (originalChord && !beatDiv.classList.contains('is-empty')) {
+                // Only update beats that show chords (not continuation dashes)
+                if (originalChord !== lastShownChord) {
+                    const transposed = this.transposeChord(originalChord, this.currentPitchShift);
+                    beatDiv.textContent = transposed;
+                    lastShownChord = originalChord;
+                }
+            }
+        });
+    }
+
+    updateFullscreenLyricsChords() {
+        document.querySelectorAll('.fs-lyrics-chord').forEach(el => {
+            const original = el.dataset.originalChord;
+            if (original) {
+                el.textContent = this.transposeChord(original, this.currentPitchShift);
+            }
+        });
     }
 
     // ============================================

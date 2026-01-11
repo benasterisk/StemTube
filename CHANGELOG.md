@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.1] - 2026-01-11
+
+### Added
+- **GridView2 chord transposition** - Chords now update in real-time when pitch changes via `updateGridView2Chords()` method
+- **Fullscreen Lyrics chord transposition** - Chords update when pitch changes via `updateFullscreenLyricsChords()` method
+
+### Fixed
+- **GridView2 Play button** - Fixed play button not working in Grid View popup by moving `initGridView2Controls()` to main initialization
+- **Duplicate event listeners** - Added guards to prevent multiple event listener registration in GridView2 popup
+
+### Changed
+- **Tempo/Pitch popup style** - Converted from full-screen overlay to floating popup at bottom of screen
+- **Popup backdrop** - Reduced opacity from 80% to 30% for better content visibility while adjusting tempo/pitch
+
+---
+
 ## [2.1.0] - 2025-12-31
 
 ### Added
