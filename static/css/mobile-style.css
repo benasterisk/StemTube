@@ -4145,7 +4145,7 @@
 }
 
 .standard-dial .dial-value {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--mobile-primary);
     pointer-events: none;
