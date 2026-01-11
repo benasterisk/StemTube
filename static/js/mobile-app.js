@@ -1919,37 +1919,8 @@ class MobileApp {
             seekBar.addEventListener('click', e => this.handleSeekClick(e));
         }
 
-        // Setup tempo sliders for all three tabs
-        const tempoSliderIds = ['mobileTempoSliderMain', 'mobileTempoSliderChords', 'mobileTempoSliderLyrics'];
-        tempoSliderIds.forEach((id, index) => {
-            const slider = document.getElementById(id);
-            if (slider) {
-                slider.addEventListener('input', e => {
-                    const ratio = parseFloat(e.target.value);
-                    // Update all tempo displays
-                    this.syncTempoValue(ratio);
-                    this.setTempo(ratio);  // Now accepts ratio, not BPM
-                });
-                // Save state when user releases slider
-                slider.addEventListener('change', () => this.saveState());
-            }
-        });
-
-        // Setup pitch sliders for all three tabs
-        const pitchSliderIds = ['mobilePitchSliderMain', 'mobilePitchSliderChords', 'mobilePitchSliderLyrics'];
-        pitchSliderIds.forEach((id, index) => {
-            const slider = document.getElementById(id);
-            if (slider) {
-                slider.addEventListener('input', e => {
-                    const v = parseInt(e.target.value);
-                    // Update all pitch displays
-                    this.syncPitchValue(v);
-                    this.setPitch(v);
-                });
-                // Save state when user releases slider
-                slider.addEventListener('change', () => this.saveState());
-            }
-        });
+        // Setup neumorphic tempo/pitch popups (replaces all tempo/pitch sliders)
+        this.setupNeumorphicDialControls();
 
         // Lyrics generation
         const lyrics = document.getElementById('mobileGenerateLyrics');
@@ -1986,35 +1957,178 @@ class MobileApp {
         this.updatePlayPauseButtons();
     }
 
-    syncTempoValue(value) {
-        // Synchronize tempo value across all three tabs
-        const sliderIds = ['mobileTempoSliderMain', 'mobileTempoSliderChords', 'mobileTempoSliderLyrics'];
-        const valueIds = ['mobileTempoValueMain', 'mobileTempoValueChords', 'mobileTempoValueLyrics'];
+    setupNeumorphicDialControls() {
+        // Tempo trigger button and popup
+        const tempoTrigger = document.getElementById('mobileTempoTrigger');
+        const tempoPopup = document.getElementById('mobileTempoPopup');
+        const tempoPopupClose = document.getElementById('tempoPopupClose');
+        const tempoDialElement = document.getElementById('tempoDialControl');
+        const tempoResetBtn = document.getElementById('tempoResetBtn');
 
-        sliderIds.forEach(id => {
-            const slider = document.getElementById(id);
-            if (slider) slider.value = value;
+        // Pitch trigger button and popup
+        const pitchTrigger = document.getElementById('mobilePitchTrigger');
+        const pitchPopup = document.getElementById('mobilePitchPopup');
+        const pitchPopupClose = document.getElementById('pitchPopupClose');
+        const pitchDialElement = document.getElementById('pitchDialControl');
+        const pitchResetBtn = document.getElementById('pitchResetBtn');
+
+        // Initialize Tempo dial (BPM mode)
+        if (tempoDialElement) {
+            this.tempoDial = new NeumorphicDial(tempoDialElement, {
+                formatValue: (v) => Math.round(v) + ' BPM',
+                onChange: (bpm) => {
+                    const ratio = bpm / this.originalBPM;
+                    this.syncTempoValueBPM(bpm);
+                    this.setTempo(ratio);
+                },
+                onChangeEnd: () => this.saveState()
+            });
+        }
+
+        // Initialize Pitch dial
+        if (pitchDialElement) {
+            this.pitchDial = new NeumorphicDial(pitchDialElement, {
+                formatValue: (v) => (v >= 0 ? '+' : '') + Math.round(v),
+                onChange: (value) => {
+                    const rounded = Math.round(value);
+                    this.syncPitchValue(rounded);
+                    this.setPitch(rounded);
+                },
+                onChangeEnd: () => this.saveState()
+            });
+        }
+
+        // Tempo popup open from ANY trigger button with .tempo-popup-trigger class
+        document.querySelectorAll('.tempo-popup-trigger').forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                // Update dial value to current BPM before opening
+                if (this.tempoDial) {
+                    this.tempoDial.setValue(this.currentBPM || 120);
+                }
+                tempoPopup.classList.add('active');
+                tempoPopup.setAttribute('aria-hidden', 'false');
+            });
         });
 
-        valueIds.forEach(id => {
-            const display = document.getElementById(id);
-            if (display) display.textContent = value.toFixed(2) + 'x';
+        // Tempo popup close
+        if (tempoPopupClose && tempoPopup) {
+            tempoPopupClose.addEventListener('click', () => {
+                tempoPopup.classList.remove('active');
+                tempoPopup.setAttribute('aria-hidden', 'true');
+            });
+        }
+        if (tempoPopup) {
+            tempoPopup.addEventListener('click', (e) => {
+                if (e.target === tempoPopup) {
+                    tempoPopup.classList.remove('active');
+                    tempoPopup.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+
+        // Pitch popup open from ANY trigger button with .pitch-popup-trigger class
+        document.querySelectorAll('.pitch-popup-trigger').forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                // Update dial value to current pitch before opening
+                if (this.pitchDial) {
+                    this.pitchDial.setValue(this.currentPitchShift || 0);
+                }
+                pitchPopup.classList.add('active');
+                pitchPopup.setAttribute('aria-hidden', 'false');
+            });
+        });
+
+        // Pitch popup close
+        if (pitchPopupClose && pitchPopup) {
+            pitchPopupClose.addEventListener('click', () => {
+                pitchPopup.classList.remove('active');
+                pitchPopup.setAttribute('aria-hidden', 'true');
+            });
+        }
+        if (pitchPopup) {
+            pitchPopup.addEventListener('click', (e) => {
+                if (e.target === pitchPopup) {
+                    pitchPopup.classList.remove('active');
+                    pitchPopup.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+
+        // Reset buttons
+        if (tempoResetBtn) {
+            tempoResetBtn.addEventListener('click', () => {
+                const defaultBPM = this.originalBPM || 120;
+                if (this.tempoDial) this.tempoDial.setValue(defaultBPM);
+                this.syncTempoValueBPM(defaultBPM);
+                this.setTempo(1.0);
+                this.saveState();
+            });
+        }
+        if (pitchResetBtn) {
+            pitchResetBtn.addEventListener('click', () => {
+                const defaultPitch = 0;
+                if (this.pitchDial) this.pitchDial.setValue(defaultPitch);
+                this.syncPitchValue(defaultPitch);
+                this.setPitch(defaultPitch);
+                this.saveState();
+            });
+        }
+    }
+
+    syncTempoValueBPM(bpm) {
+        // Synchronize tempo BPM value across all displays
+        const roundedBPM = Math.round(bpm);
+
+        // Update all elements with .tempo-bpm-display class
+        document.querySelectorAll('.tempo-bpm-display').forEach(el => {
+            el.textContent = roundedBPM + ' BPM';
+        });
+
+        // Update neumorphic dial
+        if (this.tempoDial) this.tempoDial.setValue(roundedBPM);
+
+        // Update dial value display
+        const tempoDialValue = document.getElementById('tempoDialValue');
+        if (tempoDialValue) tempoDialValue.textContent = roundedBPM + ' BPM';
+
+        // Update popup BPM sliders (fullscreen lyrics, gridview2) - legacy support
+        document.querySelectorAll('.popup-tempo-bpm-sync').forEach(slider => {
+            slider.value = roundedBPM;
+        });
+        document.querySelectorAll('.popup-tempo-bpm-value-sync').forEach(el => {
+            el.textContent = roundedBPM + ' BPM';
         });
     }
 
-    syncPitchValue(value) {
-        // Synchronize pitch value across all three tabs
-        const sliderIds = ['mobilePitchSliderMain', 'mobilePitchSliderChords', 'mobilePitchSliderLyrics'];
-        const valueIds = ['mobilePitchValueMain', 'mobilePitchValueChords', 'mobilePitchValueLyrics'];
+    // Legacy function for ratio-based sync (kept for backward compatibility)
+    syncTempoValue(ratio) {
+        const bpm = Math.round(this.originalBPM * ratio);
+        this.syncTempoValueBPM(bpm);
+    }
 
-        sliderIds.forEach(id => {
-            const slider = document.getElementById(id);
-            if (slider) slider.value = value;
+    syncPitchValue(value) {
+        // Synchronize pitch value across all displays
+        const rounded = Math.round(value);
+        const formatted = (rounded >= 0 ? '+' : '') + rounded;
+
+        // Update all elements with .pitch-display class
+        document.querySelectorAll('.pitch-display').forEach(el => {
+            el.textContent = formatted;
         });
 
-        valueIds.forEach(id => {
-            const display = document.getElementById(id);
-            if (display) display.textContent = (value > 0 ? '+' : '') + value;
+        // Update neumorphic dial
+        if (this.pitchDial) this.pitchDial.setValue(rounded);
+
+        // Update dial value display
+        const pitchDialValue = document.getElementById('pitchDialValue');
+        if (pitchDialValue) pitchDialValue.textContent = formatted;
+
+        // Update popup pitch controls - legacy support
+        document.querySelectorAll('.popup-pitch-sync').forEach(slider => {
+            slider.value = rounded;
+        });
+        document.querySelectorAll('.popup-pitch-value-sync').forEach(el => {
+            el.textContent = formatted;
         });
     }
 
@@ -4598,8 +4712,8 @@ class MobileApp {
 
     syncPopupControlsState() {
         try {
-        // Sync play button state
-        const playBtns = document.querySelectorAll('.popup-play-sync');
+        // Sync play button state (include both popup and mobile sync classes)
+        const playBtns = document.querySelectorAll('.popup-play-sync, .mobile-play-sync');
         playBtns.forEach(btn => {
             const icon = btn.querySelector('i');
             if (icon) {
@@ -4619,49 +4733,40 @@ class MobileApp {
             el.textContent = this.formatTime(this.duration);
         });
 
-        // Sync tempo sliders (ratio-based - legacy)
-        const originalBPM = this.originalBPM || 120;
-        const tempoRatio = (this.currentBPM || 120) / originalBPM;
-        const tempoSliders = document.querySelectorAll('.popup-tempo-sync');
-        tempoSliders.forEach(slider => {
-            if (isFinite(tempoRatio)) {
-                slider.value = tempoRatio.toFixed(2);
-            }
-        });
+        // Sync tempo displays (BPM-based)
+        const currentBPM = this.currentBPM || 120;
 
-        const tempoValues = document.querySelectorAll('.popup-tempo-value-sync');
-        tempoValues.forEach(el => {
-            if (isFinite(tempoRatio)) {
-                el.textContent = tempoRatio.toFixed(2) + 'x';
-            }
-        });
-
-        // Sync tempo sliders (BPM-based - new)
-        const currentBPM = this.currentBPM || 120;  // Default to 120 if undefined
-        const tempoBpmSliders = document.querySelectorAll('.popup-tempo-bpm-sync');
-        tempoBpmSliders.forEach(slider => {
-            if (isFinite(currentBPM) && currentBPM > 0) {
-                slider.value = Math.round(currentBPM);
-            }
-        });
-
-        const tempoBpmValues = document.querySelectorAll('.popup-tempo-bpm-value-sync');
-        tempoBpmValues.forEach(el => {
+        // Update all BPM displays
+        document.querySelectorAll('.tempo-bpm-display').forEach(el => {
             if (isFinite(currentBPM) && currentBPM > 0) {
                 el.textContent = Math.round(currentBPM) + ' BPM';
             }
         });
 
-        // Sync pitch sliders
-        const pitchSliders = document.querySelectorAll('.popup-pitch-sync');
-        pitchSliders.forEach(slider => {
-            slider.value = this.currentPitchShift;
+        // Update dial if exists
+        if (this.tempoDial) {
+            this.tempoDial.setValue(Math.round(currentBPM));
+        }
+
+        // Sync pitch displays
+        const pitch = this.currentPitchShift || 0;
+        const pitchFormatted = (pitch >= 0 ? '+' : '') + Math.round(pitch);
+
+        document.querySelectorAll('.pitch-display').forEach(el => {
+            el.textContent = pitchFormatted;
         });
 
-        const pitchValues = document.querySelectorAll('.popup-pitch-value-sync');
-        pitchValues.forEach(el => {
-            const sign = this.currentPitchShift >= 0 ? '+' : '';
-            el.textContent = sign + this.currentPitchShift;
+        // Update dial if exists
+        if (this.pitchDial) {
+            this.pitchDial.setValue(Math.round(pitch));
+        }
+
+        // Legacy sync for popup sliders (if any remain)
+        document.querySelectorAll('.popup-pitch-sync').forEach(slider => {
+            slider.value = pitch;
+        });
+        document.querySelectorAll('.popup-pitch-value-sync').forEach(el => {
+            el.textContent = pitchFormatted;
         });
         } catch (err) {
             console.error('[syncPopupControlsState] Error:', err);
@@ -4701,43 +4806,18 @@ class MobileApp {
     initGridView2Controls() {
         const playBtn = document.getElementById('gridview2PlayBtn');
         const stopBtn = document.getElementById('gridview2StopBtn');
-        const tempoSlider = document.getElementById('gridview2TempoSlider');
-        const pitchSlider = document.getElementById('gridview2PitchSlider');
 
+        // Use togglePlayback for consistent behavior
         if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                if (this.isPlaying) {
-                    this.pause();
-                } else {
-                    this.play();
-                }
-            });
+            playBtn.addEventListener('click', () => this.togglePlayback());
         }
 
         if (stopBtn) {
             stopBtn.addEventListener('click', () => this.stop());
         }
 
-        if (tempoSlider) {
-            tempoSlider.addEventListener('input', (e) => {
-                const targetBPM = parseInt(e.target.value);
-                const originalBPM = this.originalBPM || 120;
-                const ratio = targetBPM / originalBPM;
-                if (isFinite(ratio) && ratio > 0) {
-                    this.setTempo(ratio);
-                    this.syncPopupControlsState();
-                }
-            });
-        }
-
-        if (pitchSlider) {
-            pitchSlider.addEventListener('input', (e) => {
-                const pitch = parseInt(e.target.value);
-                this.syncPitchValue(pitch);
-                this.setPitch(pitch);
-                this.syncPopupControlsState();
-            });
-        }
+        // Note: Tempo/Pitch sliders have been replaced with neumorphic trigger buttons
+        // The triggers are handled in setupNeumorphicDialControls()
     }
 
     openGridView2Popup() {
@@ -5292,8 +5372,6 @@ class MobileApp {
     initFullscreenLyricsControls() {
         const playBtn = document.getElementById('fullscreenLyricsPlayBtn');
         const stopBtn = document.getElementById('fullscreenLyricsStopBtn');
-        const tempoSlider = document.getElementById('fullscreenLyricsTempoSlider');
-        const pitchSlider = document.getElementById('fullscreenLyricsPitchSlider');
 
         if (playBtn) {
             playBtn.addEventListener('click', () => this.togglePlayback());
@@ -5303,26 +5381,8 @@ class MobileApp {
             stopBtn.addEventListener('click', () => this.stop());
         }
 
-        if (tempoSlider) {
-            tempoSlider.addEventListener('input', (e) => {
-                const targetBPM = parseInt(e.target.value);
-                const originalBPM = this.originalBPM || 120;
-                const ratio = targetBPM / originalBPM;
-                if (isFinite(ratio) && ratio > 0) {
-                    this.setTempo(ratio);
-                    this.syncPopupControlsState();
-                }
-            });
-        }
-
-        if (pitchSlider) {
-            pitchSlider.addEventListener('input', (e) => {
-                const pitch = parseInt(e.target.value);
-                this.syncPitchValue(pitch);
-                this.setPitch(pitch);
-                this.syncPopupControlsState();
-            });
-        }
+        // Note: Tempo/Pitch sliders have been replaced with neumorphic trigger buttons
+        // The triggers are handled in setupNeumorphicDialControls()
     }
 }
 
@@ -5762,5 +5822,143 @@ class GuitarDiagramBuilder {
             `M ${pos * this.settings.stringSpace} 0 V ${fretsOnChord * this.settings.fretSpace}`
         ).join(' ');
         return `${horizontal} ${vertical}`;
+    }
+}
+
+/**
+ * NeumorphicDial - Circular rotary control with touch/drag interaction
+ */
+class NeumorphicDial {
+    constructor(element, options = {}) {
+        this.element = element;
+        this.min = parseFloat(element.dataset.min) || options.min || 0;
+        this.max = parseFloat(element.dataset.max) || options.max || 100;
+        this.step = parseFloat(element.dataset.step) || options.step || 1;
+        this.value = parseFloat(element.dataset.value) || options.initial || this.min;
+        this.onChange = options.onChange || (() => {});
+        this.onChangeEnd = options.onChangeEnd || (() => {});
+        this.formatValue = options.formatValue || (v => v.toString());
+
+        this.indicator = element.querySelector('.dial-indicator');
+        this.valueDisplay = element.querySelector('.dial-value');
+
+        this.isDragging = false;
+        this.lastAngle = 0;
+        this.accumulatedRotation = 0;
+
+        this.setupEvents();
+        this.updateDisplay();
+    }
+
+    setupEvents() {
+        // Touch events
+        this.element.addEventListener('touchstart', (e) => this.onStart(e), { passive: false });
+        document.addEventListener('touchmove', (e) => this.onMove(e), { passive: false });
+        document.addEventListener('touchend', (e) => this.onEnd(e));
+
+        // Mouse events (for testing on desktop)
+        this.element.addEventListener('mousedown', (e) => this.onStart(e));
+        document.addEventListener('mousemove', (e) => this.onMove(e));
+        document.addEventListener('mouseup', (e) => this.onEnd(e));
+    }
+
+    getEventCoords(e) {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+
+    onStart(e) {
+        e.preventDefault();
+        this.isDragging = true;
+        this.element.classList.add('active');
+
+        const rect = this.element.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const coords = this.getEventCoords(e);
+
+        this.lastAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
+        this.accumulatedRotation = this.valueToRotation(this.value);
+    }
+
+    onMove(e) {
+        if (!this.isDragging) return;
+        e.preventDefault();
+
+        const rect = this.element.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const coords = this.getEventCoords(e);
+
+        const currentAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
+        let deltaAngle = currentAngle - this.lastAngle;
+
+        // Handle wrap-around at -PI/PI boundary
+        if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
+        if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+
+        this.accumulatedRotation += deltaAngle;
+        this.lastAngle = currentAngle;
+
+        // Convert rotation to value
+        const newValue = this.rotationToValue(this.accumulatedRotation);
+        const clampedValue = Math.max(this.min, Math.min(this.max, newValue));
+        const steppedValue = Math.round(clampedValue / this.step) * this.step;
+
+        if (steppedValue !== this.value) {
+            this.value = steppedValue;
+            this.updateDisplay();
+            this.onChange(this.value);
+        }
+    }
+
+    onEnd(e) {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        this.element.classList.remove('active');
+        this.onChangeEnd(this.value);
+    }
+
+    valueToRotation(value) {
+        // Map value range to rotation range (-150deg to 150deg = -2.618 to 2.618 radians)
+        const range = this.max - this.min;
+        const normalized = (value - this.min) / range;
+        return (normalized - 0.5) * (300 * Math.PI / 180);
+    }
+
+    rotationToValue(rotation) {
+        // Map rotation to value
+        const maxRotation = 150 * Math.PI / 180;
+        const clampedRotation = Math.max(-maxRotation, Math.min(maxRotation, rotation));
+        const normalized = (clampedRotation / (300 * Math.PI / 180)) + 0.5;
+        return this.min + normalized * (this.max - this.min);
+    }
+
+    updateDisplay() {
+        // Update indicator rotation
+        if (this.indicator) {
+            const rotation = this.valueToRotation(this.value) * (180 / Math.PI);
+            this.indicator.style.transform = `rotate(${rotation}deg)`;
+        }
+
+        // Update value display
+        if (this.valueDisplay) {
+            this.valueDisplay.textContent = this.formatValue(this.value);
+        }
+    }
+
+    setValue(value, triggerCallback = false) {
+        this.value = Math.max(this.min, Math.min(this.max, value));
+        this.accumulatedRotation = this.valueToRotation(this.value);
+        this.updateDisplay();
+        if (triggerCallback) {
+            this.onChange(this.value);
+        }
+    }
+
+    getValue() {
+        return this.value;
     }
 }
