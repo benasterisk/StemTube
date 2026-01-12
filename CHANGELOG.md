@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.2] - 2026-01-13
+
+### Fixed
+- **Admin cleanup session sync** - Downloads deleted via admin cleanup now immediately disappear from all active user sessions without requiring logout/login
+- **Bulk delete session sync** - Bulk delete operations now also clear downloads from active user sessions
+- **Mixer stems loading after extraction** - Fixed race condition where stems wouldn't load on first click after extraction completion
+  - Database persistence now happens BEFORE socket events are emitted
+  - Mixer route now properly parses `stems_paths` JSON from database into `output_paths`
+
+### Added
+- `remove_download_by_video_id()` method to DownloadManager for clearing specific downloads from session
+- `clear_download_from_all_sessions()` method to UserSessionManager for admin cleanup operations
+- Debug logging for cleanup operations to track session clearing
+
+---
+
 ## [2.1.1] - 2026-01-11
 
 ### Added

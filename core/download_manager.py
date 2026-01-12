@@ -209,6 +209,32 @@ class DownloadManager:
             "failed": list(self.failed_downloads.values())
         }
 
+    def remove_download_by_video_id(self, video_id: str) -> bool:
+        """Remove a download from all internal dictionaries by video_id.
+
+        Used when admin deletes a download to clear it from active sessions.
+
+        Args:
+            video_id: The YouTube video ID to remove.
+
+        Returns:
+            True if any downloads were removed, False otherwise.
+        """
+        removed = False
+        dicts = {
+            'active': self.active_downloads,
+            'completed': self.completed_downloads,
+            'failed': self.failed_downloads,
+            'queued': self.queued_downloads
+        }
+        for name, d in dicts.items():
+            keys_to_remove = [k for k, v in d.items() if v.video_id == video_id]
+            for k in keys_to_remove:
+                print(f"[CLEANUP] Removing {video_id} from {name} downloads (key={k})")
+                del d[k]
+                removed = True
+        return removed
+
     def analyze_audio_with_librosa(self, audio_path: str) -> dict:
         """Analyzes audio file to detect BPM and key (Windows-compatible)."""
         try:

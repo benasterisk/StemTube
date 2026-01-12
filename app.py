@@ -355,6 +355,18 @@ class UserSessionManager:
         elif video_id in self.pending_reload_users:
             del self.pending_reload_users[video_id]
 
+    def clear_download_from_all_sessions(self, video_id: str):
+        """Remove a download from all active user download managers.
+
+        Called when admin deletes a download via cleanup to ensure it
+        disappears from user libraries immediately.
+        """
+        print(f"[CLEANUP] Clearing video_id={video_id} from {len(self.download_managers)} active sessions")
+        for key, dm in self.download_managers.items():
+            removed = dm.remove_download_by_video_id(video_id)
+            if removed:
+                print(f"[CLEANUP] Removed from session: {key}")
+
     # ---------- stems extractor ----------
     def get_stems_extractor(self) -> StemsExtractor:
         key = self._key()
@@ -571,49 +583,8 @@ class UserSessionManager:
         # DEBUG: Log what we received
         logger.debug(f"Extraction complete for {item_id}: video_id='{video_id}', user_id={user_id}")
 
-        # Get user's download_id for this video to update the correct DOM element
-        download_id = None
-        if user_id and video_id:
-            try:
-                download_id = db_get_user_download_id(user_id, video_id)
-                logger.debug(f"Found download_id {download_id} for user {user_id}, video {video_id}")
-            except Exception as e:
-                logger.warning(f"Could not get download_id for user {user_id}, video {video_id}: {e}")
-
-        # Send to the specific user who initiated the extraction
-        socketio.emit('extraction_complete', {
-            'extraction_id': item_id,
-            'video_id': video_id,
-            'download_id': download_id,  # User-specific download record ID
-            'title': title
-        }, room=room_key or self._key())
-        
-        # BROADCAST to ALL connected clients (no room restriction)
-        logger.debug("Broadcasting extraction completion to ALL connected clients")
-        try:
-            # Use broadcast=True to send to ALL connected clients regardless of rooms
-            socketio.emit('extraction_completed_global', {
-                'extraction_id': item_id,
-                'video_id': video_id,
-                'title': title
-            }, broadcast=True)
-            logger.debug("Global broadcast sent with broadcast=True")
-        except Exception as e:
-            logger.error(f"Error sending global broadcast: {e}")
-            
-        # Alternative approach: try sending without any room parameter
-        try:
-            socketio.emit('extraction_refresh_needed', {
-                'extraction_id': item_id,
-                'video_id': video_id,
-                'title': title,
-                'message': 'New extraction available - please refresh'
-            })
-            logger.debug("Alternative global event sent")
-        except Exception as e:
-            logger.error(f"Error sending alternative event: {e}")
-        
-        # Persist completed extraction to downloads database
+        # IMPORTANT: Persist to database FIRST, before emitting socket events
+        # This prevents race condition where user clicks "Open Mixer" before DB is updated
         if user_id and video_id and item:
             with log_with_context(logger, user_id=user_id, video_id=video_id):
                 logger.debug("Processing extraction completion context")
@@ -653,6 +624,49 @@ class UserSessionManager:
                     traceback.print_exc()
         else:
             print(f"[CALLBACK DEBUG] Missing user_id, video_id, or item data")
+
+        # NOW emit socket events (after database is updated)
+        # Get user's download_id for this video to update the correct DOM element
+        download_id = None
+        if user_id and video_id:
+            try:
+                download_id = db_get_user_download_id(user_id, video_id)
+                logger.debug(f"Found download_id {download_id} for user {user_id}, video {video_id}")
+            except Exception as e:
+                logger.warning(f"Could not get download_id for user {user_id}, video {video_id}: {e}")
+
+        # Send to the specific user who initiated the extraction
+        socketio.emit('extraction_complete', {
+            'extraction_id': item_id,
+            'video_id': video_id,
+            'download_id': download_id,  # User-specific download record ID
+            'title': title
+        }, room=room_key or self._key())
+
+        # BROADCAST to ALL connected clients (no room restriction)
+        logger.debug("Broadcasting extraction completion to ALL connected clients")
+        try:
+            # Use broadcast=True to send to ALL connected clients regardless of rooms
+            socketio.emit('extraction_completed_global', {
+                'extraction_id': item_id,
+                'video_id': video_id,
+                'title': title
+            }, broadcast=True)
+            logger.debug("Global broadcast sent with broadcast=True")
+        except Exception as e:
+            logger.error(f"Error sending global broadcast: {e}")
+
+        # Alternative approach: try sending without any room parameter
+        try:
+            socketio.emit('extraction_refresh_needed', {
+                'extraction_id': item_id,
+                'video_id': video_id,
+                'title': title,
+                'message': 'New extraction available - please refresh'
+            })
+            logger.debug("Alternative global event sent")
+        except Exception as e:
+            logger.error(f"Error sending alternative event: {e}")
 
     # ---------- legacy emitters (kept for compatibility) ----------
     def _emit_progress(self, item_id, progress, speed_or_msg=None, eta=None):
@@ -915,10 +929,20 @@ def mixer():
                 )
 
                 if matches:
+                    # Parse stems_paths from JSON string to dict for output_paths
+                    output_paths = {}
+                    stems_paths_json = db_extraction.get('stems_paths')
+                    if stems_paths_json:
+                        try:
+                            import json
+                            output_paths = json.loads(stems_paths_json)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
                     extraction_info = {
                         'extraction_id': extraction_id,
                         'status': 'completed',
-                        'output_paths': {},  # Will be populated by stems paths if needed
+                        'output_paths': output_paths,
                         'audio_path': db_extraction['file_path'],
                         'title': db_extraction.get('title'),
                         'extraction_model': get_model_display_name(db_extraction.get('extraction_model', 'htdemucs')),
@@ -928,7 +952,7 @@ def mixer():
                         'chords_data': db_extraction.get('chords_data'),
                         'beat_offset': db_extraction.get('beat_offset', 0.0)
                     }
-                    print(f"[MIXER DEBUG] Found match! BPM: {extraction_info['detected_bpm']}, Key: {extraction_info['detected_key']}, Chords: {bool(extraction_info.get('chords_data'))}")
+                    print(f"[MIXER DEBUG] Found match! BPM: {extraction_info['detected_bpm']}, Key: {extraction_info['detected_key']}, Chords: {bool(extraction_info.get('chords_data'))}, Stems: {list(output_paths.keys())}")
                     break
         except Exception as e:
             print(f"[MIXER] Error loading historical extraction data: {e}")
@@ -2683,10 +2707,13 @@ def admin_delete_download_by_video_id(video_id):
         
         # Delete from database first to get download info
         success, message, detailed_info = delete_download_completely(global_download_id)
-        
+
         if not success:
             return jsonify({'error': message}), 400
-        
+
+        # Clear from all active user sessions so it disappears from their library
+        user_session_manager.clear_download_from_all_sessions(video_id)
+
         file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
         
         # Delete associated files if we have download info
@@ -2909,18 +2936,23 @@ def admin_bulk_delete_downloads():
         for download_id in download_ids:
             try:
                 download_info_dict = downloads_to_delete.get(download_id)
-                
+                video_id = download_info_dict.get('video_id') if download_info_dict else None
+
                 # Delete from database
                 success, message, download_info = delete_download_completely(download_id)
-                
+
+                # Clear from all active user sessions
+                if success and video_id:
+                    user_session_manager.clear_download_from_all_sessions(video_id)
+
                 file_cleanup_stats = {'files_deleted': [], 'total_size_freed': 0, 'errors': []}
-                
+
                 # Delete files using either the retrieved info or the pre-fetched info
                 cleanup_info = download_info or download_info_dict
                 if cleanup_info:
                     file_success, file_message, file_cleanup_stats = delete_download_files(cleanup_info)
                     total_freed += file_cleanup_stats['total_size_freed']
-                
+
                 results.append({
                     'download_id': download_id,
                     'success': success,
