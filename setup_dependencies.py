@@ -262,6 +262,7 @@ def install_requirements(venv_python):
         "scipy",                # Scientific computing
         "scikit-learn",         # Machine learning
         "yt-dlp",               # YouTube downloader
+        "yt-dlp-ejs",           # YouTube JS challenge solver (required since late 2025)
         "faster-whisper",       # Speech recognition (GPU)
         "msaf",                 # Music structure analysis
         "pychord",              # Chord notation
@@ -542,6 +543,72 @@ def ensure_chord_library():
         return False
 
 
+def install_deno_runtime():
+    """
+    Install Deno JavaScript runtime required by yt-dlp for YouTube signature challenges.
+    Since late 2025, YouTube requires JavaScript challenge solving which needs an external JS runtime.
+    Deno is the recommended runtime by yt-dlp (safest, runs with restricted permissions).
+    """
+    logger.info("\n[INSTALLING] Deno JavaScript runtime for yt-dlp YouTube support...")
+
+    platform_name = get_platform()
+    deno_bin = os.path.expanduser("~/.deno/bin/deno")
+
+    # Check if Deno is already installed
+    if os.path.exists(deno_bin):
+        logger.info("[INFO] Deno is already installed")
+        return True
+
+    try:
+        if platform_name == "windows":
+            # Windows installation via PowerShell
+            install_cmd = [
+                "powershell", "-Command",
+                "irm https://deno.land/install.ps1 | iex"
+            ]
+        else:
+            # Linux/macOS installation via shell script
+            install_cmd = ["sh", "-c", "curl -fsSL https://deno.land/install.sh | sh"]
+
+        result = subprocess.run(
+            install_cmd,
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if result.returncode == 0 or os.path.exists(deno_bin):
+            logger.info("[SUCCESS] Deno installed successfully")
+
+            # Add Deno to PATH in shell profile for persistence
+            if platform_name != "windows":
+                bashrc_path = os.path.expanduser("~/.bashrc")
+                deno_path_line = 'export PATH="$HOME/.deno/bin:$PATH"'
+
+                # Check if already in bashrc
+                try:
+                    with open(bashrc_path, 'r') as f:
+                        if deno_path_line not in f.read():
+                            with open(bashrc_path, 'a') as f:
+                                f.write(f'\n# Deno for yt-dlp YouTube support\n{deno_path_line}\n')
+                            logger.info("[INFO] Deno PATH added to ~/.bashrc")
+                except Exception:
+                    pass
+
+            return True
+        else:
+            logger.info(f"[WARNING] Deno installation may have issues: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.info("[WARNING] Deno installation timed out")
+        return False
+    except Exception as e:
+        logger.info(f"[WARNING] Could not install Deno: {e}")
+        logger.info("[INFO] YouTube downloads may have limited format availability")
+        return False
+
+
 def preload_whisper_large(venv_python, use_gpu):
     """Pre-download the faster-whisper model best suited for the host."""
     target_model = "large-v3"
@@ -679,6 +746,9 @@ def main():
     # Apply madmom numpy compatibility patch (required for chord detection)
     apply_madmom_patch(venv_python)
 
+    # Install Deno runtime for yt-dlp YouTube JS challenges (required since late 2025)
+    install_deno_runtime()
+
     # Ensure mobile chord diagrams + lyrics workflow assets are ready
     if not ensure_chord_library():
         logger.info("[WARNING] Mobile chord diagrams will be missing unless the library is cloned manually.")
@@ -686,18 +756,24 @@ def main():
 
     logger.info("\n[SUCCESS] Setup complete!")
     logger.info("\n" + "="*60)
-    logger.info("NEXT STEPS - It's this simple:")
+    logger.info("NEXT STEPS:")
     logger.info("="*60)
 
     if platform_name == "windows":
         logger.info("   venv\\Scripts\\activate")
+        logger.info("   python app.py")
     else:
+        logger.info("   # Reload shell to include Deno in PATH (required for YouTube downloads)")
+        logger.info("   source ~/.bashrc")
+        logger.info("")
+        logger.info("   # Then activate venv and run")
         logger.info("   source venv/bin/activate")
+        logger.info("   python app.py")
 
-    logger.info("   python app.py")
     logger.info("="*60)
     logger.info("\n✅ All dependencies have been installed.")
     logger.info("✅ PyTorch, cuDNN, and faster-whisper are configured for your system.")
+    logger.info("✅ Deno runtime installed for YouTube JS challenge support.")
     if install_gpu_pytorch:
         logger.info("✅ GPU acceleration is AUTOMATIC (sitecustomize.py configured).")
         logger.info("   → No wrapper scripts needed!")

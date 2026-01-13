@@ -158,13 +158,37 @@ curl -I https://www.youtube.com/
 **3. yt-dlp Outdated**:
 ```bash
 source venv/bin/activate
-pip install --upgrade yt-dlp
+pip install --upgrade yt-dlp yt-dlp-ejs
 
 # Restart app
 python app.py
 ```
 
-**4. Rate Limiting**:
+**4. JavaScript Runtime Missing** (since late 2025):
+
+YouTube now requires JavaScript challenge solving. If you see warnings like:
+- "Signature solving failed"
+- "n challenge solving failed"
+- "JS Challenge Providers: none"
+
+**Solution**: Install Deno runtime:
+```bash
+# Linux/macOS
+curl -fsSL https://deno.land/install.sh | sh
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Windows (PowerShell)
+irm https://deno.land/install.ps1 | iex
+```
+
+Then install the EJS component:
+```bash
+source venv/bin/activate
+pip install yt-dlp-ejs
+```
+
+**5. Rate Limiting**:
 - YouTube may temporarily block requests
 - Wait 15-30 minutes
 - Try different video
